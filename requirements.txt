@@ -1,3 +1,7 @@
+# Runtime dependencies used by the historical notebook.
+# Exact historical package versions were not recorded, so this file is not a lockfile.
+# A validated, reproducible environment will be captured after the experimental pipeline is repaired.
+
 tensorflow>=2.10.0
 pandas
 numpy
