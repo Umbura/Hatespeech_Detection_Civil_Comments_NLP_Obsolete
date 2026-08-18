@@ -21,13 +21,13 @@ Stage 1 trains on the full Civil Comments dataset with two sigmoid outputs:
 
 Both outputs use the original fractional scores as soft training targets. The routing threshold is applied only when a binary routing decision is required.
 
-Initial routing threshold:
+Initial selected routing threshold:
 
 ```text
-toxicity >= 0.5
+toxicity >= 0.4
 ```
 
-The threshold is configurable and is not assumed to be optimal.
+The value is configurable. It was selected from measured full-train gate coverage rather than assumed to be optimal.
 
 ## Stage 2 — fine-grained multilabel classification
 
@@ -61,17 +61,22 @@ The fractional targets remain unchanged for training.
 
 This allows Stage 1 to train and validate on the full dataset while Stage 2 uses the toxic portion of the same outer fold without introducing resampling duplicates.
 
-## Gate-coverage prerequisite
+## Gate-coverage evidence
 
-Before treating `toxicity >= 0.5` as an empirically safe gate, run:
+Gate coverage was executed on the full Civil Comments training split (`1,804,874` samples). Fine-grained labels were counted as positive at `score >= 0.5`.
 
-```bash
-python scripts/analyze_gate_coverage.py
-```
+| Gate threshold | Routed samples | Share of train | Any Stage 2 positives missed | Any-positive coverage |
+| --- | ---: | ---: | ---: | ---: |
+| `0.50` | 144,334 | 8.00% | 4,213 / 126,250 (3.337%) | 96.663% |
+| `0.40` | 201,476 | 11.16% | 533 / 126,250 (0.422%) | 99.578% |
+| `0.35` | 204,460 | 11.33% | 529 / 126,250 (0.419%) | 99.581% |
+| `0.30` | 266,089 | 14.74% | 79 / 126,250 (0.063%) | 99.937% |
 
-The report counts, per Stage 2 label and overall, how many subtype-positive examples (`score >= 0.5`) have `toxicity < 0.5` and would therefore be excluded by the ground-truth gate.
+`0.40` is the initial selected gate. Moving from `0.40` to `0.35` routed 2,984 additional samples while recovering only 4 additional Stage 2-positive samples, so the extra routing load did not justify the negligible coverage gain.
 
-The repository must report the measured result rather than assume the missed-positive rate is negligible.
+`sexual_explicit` remains the most affected subtype at the selected gate: 226 of 4,686 positives (4.823%) fall below `toxicity = 0.4`. This limitation must be monitored in the Stage 2 oracle and end-to-end evaluations.
+
+The gate remains an experimental decision and may be revisited after the new baseline produces predicted-routing evidence.
 
 ## Required evaluation views
 
