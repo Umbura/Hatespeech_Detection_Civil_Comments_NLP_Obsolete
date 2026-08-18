@@ -21,6 +21,7 @@ from datasets import load_dataset
 
 from hate_speech_detection.target_strategy import (
     ALL_TARGET_COLUMNS,
+    DEFAULT_GATE_THRESHOLD,
     analyze_gate_coverage,
 )
 
@@ -30,8 +31,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gate-threshold",
         type=float,
-        default=0.5,
-        help="toxicity score used to route samples to Stage 2 (default: 0.5)",
+        default=DEFAULT_GATE_THRESHOLD,
+        help=(
+            "toxicity score used to route samples to Stage 2 "
+            f"(default: {DEFAULT_GATE_THRESHOLD})"
+        ),
     )
     parser.add_argument(
         "--label-threshold",
