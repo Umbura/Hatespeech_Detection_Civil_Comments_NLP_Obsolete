@@ -28,6 +28,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
             ROOT / "src" / "hate_speech_detection" / "threshold_selection.py",
             ROOT / "scripts" / "run_leakage_safe_cv.py",
             ROOT / "scripts" / "run_hierarchical_cv.py",
+            ROOT / "scripts" / "run_route_head_cv.py",
             ROOT / "scripts" / "analyze_gate_coverage.py",
             NOTEBOOK,
         ]
