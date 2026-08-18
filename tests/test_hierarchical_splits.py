@@ -12,6 +12,7 @@ if str(SRC) not in sys.path:
 import pandas as pd
 
 from hate_speech_detection.hierarchical_splits import (
+    make_hierarchical_inner_split,
     make_hierarchical_splits,
     make_stage1_inner_split,
     make_stage2_inner_split,
@@ -114,6 +115,50 @@ class HierarchicalSplitTests(unittest.TestCase):
                     original_toxic_indices
                 )
             )
+
+    def test_common_inner_split_is_shared_by_both_stages(self):
+        outer = make_hierarchical_splits(
+            self.frame,
+            n_splits=2,
+            random_state=42,
+        )[0]
+        inner = make_hierarchical_inner_split(
+            self.frame,
+            outer.train_indices,
+            validation_fraction=0.25,
+            random_state=43,
+            gate_threshold=0.4,
+            label_threshold=0.5,
+        )
+
+        inner_train = set(int(index) for index in inner.train_indices)
+        inner_validation = set(int(index) for index in inner.validation_indices)
+        outer_train = set(int(index) for index in outer.train_indices)
+        outer_validation = set(int(index) for index in outer.validation_indices)
+        stage2_train = set(int(index) for index in inner.stage2_train_indices)
+        stage2_validation = set(
+            int(index) for index in inner.stage2_validation_indices
+        )
+
+        self.assertTrue(inner_train.isdisjoint(inner_validation))
+        self.assertEqual(inner_train | inner_validation, outer_train)
+        self.assertTrue((inner_train | inner_validation).isdisjoint(outer_validation))
+        self.assertTrue(stage2_train.issubset(inner_train))
+        self.assertTrue(stage2_validation.issubset(inner_validation))
+        self.assertTrue(stage2_train.isdisjoint(stage2_validation))
+
+        routed_inner_train = {
+            index
+            for index in inner_train
+            if self.frame.iloc[index]["toxicity"] >= 0.4
+        }
+        routed_inner_validation = {
+            index
+            for index in inner_validation
+            if self.frame.iloc[index]["toxicity"] >= 0.4
+        }
+        self.assertEqual(stage2_train, routed_inner_train)
+        self.assertEqual(stage2_validation, routed_inner_validation)
 
     def test_stage1_inner_validation_never_uses_outer_validation(self):
         outer = make_hierarchical_splits(
