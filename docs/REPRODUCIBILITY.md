@@ -6,60 +6,79 @@ This repository preserves a historical CNN + Bi-LSTM experiment whose exact runt
 
 The saved notebook remains the source of truth for the historical experiment. Its scientific limitations and evaluation concerns are documented separately in `KNOWN_ISSUES.md` and `EXPERIMENT_HISTORY.md`.
 
-A repaired cross-validation path now exists outside the historical notebook:
+Two repaired code paths now exist outside the historical notebook:
 
-- `src/hate_speech_detection/cv_pipeline.py` defines fold isolation, training-only resampling, and training-only tokenizer fitting;
-- `scripts/run_leakage_safe_cv.py` applies that order while preserving the historical model architecture and target rule.
+- `scripts/run_leakage_safe_cv.py` preserves the historical multiclass target rule while correcting cross-validation leakage; it remains an intermediate comparison baseline;
+- `scripts/run_hierarchical_cv.py` implements the Issue #5 hierarchical target strategy documented in `TARGET_STRATEGY.md`.
 
-The repaired runner has not yet produced replacement benchmark metrics.
+Neither runner has produced replacement benchmark metrics that are approved for publication.
 
 ## Repository-level validation
 
-Run the structural and leakage-regression checks from the repository root:
+Run the structural and regression checks from the repository root:
 
 ```bash
-python -m pip install pandas numpy scikit-learn imbalanced-learn
+python -m pip install pandas numpy scikit-learn imbalanced-learn 'iterative-stratification>=0.1.9'
 python -m compileall -q src scripts
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-These checks verify repository layout, source syntax, notebook JSON/nbformat integrity, notebook placement, documentation references, stratified fold disjointness, training-only balancing, and exclusion of validation text from tokenizer fitting.
+These checks verify repository layout, source syntax, notebook JSON/nbformat integrity, historical leakage protections, hierarchical target extraction, preservation of overlapping labels, gate-coverage accounting, fold disjointness, multilabel-aware toxic-sample stratification, and absence of Stage 2 oversampling in the new strategy.
 
-GitHub Actions runs the same validation on pull requests and pushes to `main`. The CI job uses Python 3.12 and installs only the data/validation dependencies required by the regression tests; it does not install TensorFlow or execute model training.
+GitHub Actions runs the same validation on pull requests and pushes to `main`. The CI job uses Python 3.12 and installs only the data/validation dependencies required by regression tests; it does not install TensorFlow or execute model training.
 
-## Leakage-safe experiment command
+## Gate-coverage analysis
 
-The repaired experiment runner can be started from the repository root after installing the full runtime dependencies from `requirements.txt`:
+Before the initial `toxicity >= 0.5` routing threshold is described as empirically safe, run:
+
+```bash
+python scripts/analyze_gate_coverage.py
+```
+
+The command downloads Civil Comments through Hugging Face `datasets` and reports how many fine-grained positives would be excluded by the ground-truth gate. The measured output should be preserved with the experiment evidence.
+
+## Hierarchical experiment command
+
+After installing the full runtime dependencies from `requirements.txt`, the hierarchical runner can be started with:
+
+```bash
+python scripts/run_hierarchical_cv.py
+```
+
+It performs five-fold training and separately reports Stage 1 routing, Stage 2 oracle, and end-to-end subtype metrics. It is computationally expensive and is intentionally not part of CI.
+
+The earlier leakage-safe multiclass comparison path remains available as:
 
 ```bash
 python scripts/run_leakage_safe_cv.py
 ```
-
-This command downloads Civil Comments through the Hugging Face `datasets` library and performs five-fold training. It is computationally expensive and is intentionally not part of CI.
 
 ## What this baseline does not validate
 
 The current CI does not:
 
 - install TensorFlow or the complete training runtime;
-- download or validate a specific Civil Comments dataset revision;
-- execute notebook or runner training;
+- download or pin a specific Civil Comments dataset revision;
+- execute either training runner;
 - reproduce historical metrics;
+- quantify real-dataset gate coverage;
 - prove that the corrected pipeline resolves the confirmed overfitting;
-- validate the final target-label semantics;
+- optimize routing or per-label thresholds;
 - validate fairness, robustness, or production suitability.
 
-## Requirements for the repaired experiment
+## Requirements for replacement metrics
 
-Before replacement metrics are promoted as a validated benchmark, reproducibility evidence should include at least:
+Before new metrics are promoted as a validated benchmark, reproducibility evidence should include at least:
 
 1. a supported Python version;
 2. exact dependency versions or a generated lock/environment file;
 3. deterministic seeds where supported;
 4. the dataset source and revision/configuration used;
-5. preprocessing, balancing, split, and label-generation configuration;
-6. hardware/runtime notes when they materially affect execution;
-7. commands required to train and evaluate from a clean environment;
-8. generated evaluation artifacts tied to the corresponding code revision.
+5. preprocessing, split, routing, and target configuration;
+6. the measured gate-coverage report;
+7. hardware/runtime notes when they materially affect execution;
+8. commands required to train and evaluate from a clean environment;
+9. Stage 1, Stage 2 oracle, and end-to-end metrics tied to the corresponding code revision;
+10. generated evaluation artifacts tied to that same revision.
 
-No historical metric should be promoted to a validated benchmark until that environment and evaluation procedure have been executed successfully.
+No historical or replacement metric should be promoted to a validated benchmark until the corresponding environment and evaluation procedure have been executed successfully.

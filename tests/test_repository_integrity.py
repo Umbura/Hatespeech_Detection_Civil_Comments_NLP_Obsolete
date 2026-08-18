@@ -19,9 +19,14 @@ class RepositoryIntegrityTests(unittest.TestCase):
             ROOT / "docs" / "KNOWN_ISSUES.md",
             ROOT / "docs" / "EXPERIMENT_HISTORY.md",
             ROOT / "docs" / "REPRODUCIBILITY.md",
+            ROOT / "docs" / "TARGET_STRATEGY.md",
             ROOT / "src" / "hate_speech_detection" / "__init__.py",
             ROOT / "src" / "hate_speech_detection" / "cv_pipeline.py",
+            ROOT / "src" / "hate_speech_detection" / "target_strategy.py",
+            ROOT / "src" / "hate_speech_detection" / "hierarchical_splits.py",
             ROOT / "scripts" / "run_leakage_safe_cv.py",
+            ROOT / "scripts" / "run_hierarchical_cv.py",
+            ROOT / "scripts" / "analyze_gate_coverage.py",
             NOTEBOOK,
         ]
 
