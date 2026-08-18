@@ -49,6 +49,26 @@ def _as_threshold_candidates(candidates: Iterable[float] | None) -> np.ndarray:
     return np.unique(values)
 
 
+def _macro_positive_label_f1(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Return the mean positive-class F1 across multilabel output columns.
+
+    Computing the mean explicitly keeps the metric definition stable even for
+    synthetic one-column tests, where scikit-learn may otherwise infer a binary
+    target and average over positive and negative classes instead of labels.
+    """
+
+    if y_true.ndim != 2 or y_pred.ndim != 2 or y_true.shape != y_pred.shape:
+        raise ValueError("multilabel arrays must be 2D and have identical shapes")
+    if y_true.shape[1] == 0:
+        raise ValueError("multilabel arrays must contain at least one output column")
+
+    scores = [
+        f1_score(y_true[:, index], y_pred[:, index], zero_division=0)
+        for index in range(y_true.shape[1])
+    ]
+    return float(np.mean(scores))
+
+
 def apply_label_thresholds(
     probabilities: np.ndarray,
     thresholds: np.ndarray,
@@ -164,11 +184,9 @@ def select_routing_threshold(
         cascade_predictions = label_predictions.copy()
         cascade_predictions[~routed] = 0
 
-        macro_f1 = f1_score(
+        macro_f1 = _macro_positive_label_f1(
             stage2_true,
             cascade_predictions,
-            average="macro",
-            zero_division=0,
         )
         gate_recall = recall_score(
             gate_true,
