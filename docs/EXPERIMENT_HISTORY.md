@@ -69,21 +69,77 @@ The aggregated out-of-fold result was:
 
 EarlyStopping selected very early epochs: Stage 1 selected epoch 2 in fold 1 and epoch 1 in fold 2; Stage 2 selected epochs 2 and 3. This confirms that overfitting pressure appears early even after the evaluation-leakage repair.
 
-The gap between Stage 2 oracle Macro F1 (`0.4674`) and end-to-end Macro F1 (`0.3484`), together with Stage 1 recall (`0.4614`), identifies predicted routing as a major current bottleneck. High Stage 1 accuracy is therefore not treated as sufficient evidence of good routing performance.
+The gap between Stage 2 oracle Macro F1 (`0.4674`) and end-to-end Macro F1 (`0.3484`), together with Stage 1 recall (`0.4614`), identified predicted routing as a major bottleneck. High Stage 1 accuracy is therefore not treated as sufficient evidence of good routing performance.
 
-These results are the repaired fixed-threshold baseline for comparison. They are not yet the final project benchmark or the official-test result.
+These results remain the repaired fixed-threshold baseline for comparison. They are not the final official-test result.
 
-## Current threshold diagnostic
+## Nested threshold diagnostic — 2026-08-18
 
-The next experiment keeps the same architecture, data, soft targets, loss functions, and outer-fold protocol. It changes only prediction-time model selection inside the inner validation partition:
+PR #10 kept the same CNN + Bi-LSTM architecture, data, soft targets, BCE losses, two outer folds, and common inner-validation protocol. It changed only prediction-time model selection inside the inner validation partition:
 
-1. each Stage 2 label threshold is selected by inner-validation F1;
-2. the Stage 1 predicted routing threshold is selected by inner-validation **end-to-end Macro F1** using those Stage 2 thresholds;
-3. fixed `0.4/0.5` predictions are still evaluated from the same trained models as a reference;
-4. the selected thresholds are frozen before outer-fold evaluation;
-5. PR-AUC/average precision is recorded to distinguish threshold mismatch from weak class separation.
+1. each Stage 2 label threshold was selected by inner-validation F1;
+2. the Stage 1 predicted routing threshold was selected by inner-validation end-to-end Macro F1 using those Stage 2 thresholds;
+3. fixed `0.4/0.5` predictions were evaluated from the same model fits for direct comparison;
+4. all selected thresholds were frozen before outer-fold evaluation;
+5. PR-AUC/average precision was recorded to distinguish threshold mismatch from weak discrimination.
 
-This design deliberately avoids introducing weighted losses, focal/asymmetric loss, oversampling, architecture changes, or transformer baselines before the cheaper threshold diagnostic establishes whether those additional experiments are necessary.
+The full-data two-fold run completed successfully in the recorded Colab Tesla T4 runtime.
+
+### Selected thresholds
+
+| Output | Fold 1 | Fold 2 |
+| :--- | ---: | ---: |
+| Stage 1 routing | 0.27 | 0.30 |
+| `obscene` | 0.35 | 0.41 |
+| `threat` | 0.38 | 0.40 |
+| `insult` | 0.43 | 0.46 |
+| `identity_attack` | 0.33 | 0.37 |
+| `sexual_explicit` | 0.34 | 0.37 |
+
+The similar operating regions across folds are evidence that the full-data thresholds are materially more stable than the one-epoch 50k smoke-run thresholds, which are diagnostic only.
+
+### Stage 1 — same scores, different routing thresholds
+
+| Metric | Fixed `0.40` | Nested tuned |
+| :--- | ---: | ---: |
+| Accuracy | 0.9257 | 0.9265 |
+| Precision | 0.8340 | 0.7163 |
+| Recall | 0.4178 | 0.5653 |
+| F1 | 0.5567 | 0.6319 |
+| Routing rate | 0.0559 | 0.0881 |
+| PR-AUC / average precision | 0.7095 | 0.7095 |
+| ROC-AUC | 0.9195 | 0.9195 |
+| `severe_toxicity` auxiliary MAE | 0.0069 | 0.0069 |
+
+The unchanged PR-AUC/ROC-AUC and improved F1/recall show that a substantial part of the fixed-threshold Stage 1 error was an operating-point mismatch rather than complete failure to rank routed examples.
+
+### Stage 2 oracle
+
+| Metric | Fixed `0.50` | Nested tuned |
+| :--- | ---: | ---: |
+| Macro F1 | 0.4766 | 0.5959 |
+| `obscene` F1 | 0.5294 | 0.6177 |
+| `threat` F1 | 0.4572 | 0.5112 |
+| `insult` F1 | 0.7486 | 0.7639 |
+| `identity_attack` F1 | 0.2841 | 0.5595 |
+| `sexual_explicit` F1 | 0.3635 | 0.5272 |
+
+Per-label PR-AUC/AP from the same outer predictions was `0.6262` (`obscene`), `0.5007` (`threat`), `0.8434` (`insult`), `0.5301` (`identity_attack`), and `0.5321` (`sexual_explicit`).
+
+### End-to-end
+
+| Metric | Fixed `0.40/0.50` | Nested tuned |
+| :--- | ---: | ---: |
+| Macro F1 | 0.3496 | 0.4412 |
+| `obscene` F1 | 0.4608 | 0.5115 |
+| `threat` F1 | 0.1991 | 0.2951 |
+| `insult` F1 | 0.6327 | 0.6343 |
+| `identity_attack` F1 | 0.1758 | 0.3761 |
+| `sexual_explicit` F1 | 0.2797 | 0.3892 |
+
+Nested threshold selection improved end-to-end Macro F1 from `0.3496` to `0.4412` in the same model fits, a relative increase of about 26%. The Stage 2 oracle score remains higher (`0.5959`), so propagation error is reduced but not eliminated.
+
+The evidence therefore does **not** justify immediately replacing the architecture or adding multiple imbalance techniques. The next controlled experiment is narrower: align Stage 1 training with its operational role by adding an explicit binary routing output while preserving the existing soft `toxicity` and `severe_toxicity` outputs.
 
 ## Preservation policy
 
@@ -91,10 +147,8 @@ The historical notebook is intentionally kept unchanged as the reference point f
 
 ## Next experimental stage
 
-After the nested threshold run:
+The next experiment should answer one question only:
 
-1. compare fixed and nested-tuned outer-fold results from the same model fits;
-2. inspect Stage 1 and per-label PR-AUC/average precision;
-3. introduce a training change only if discrimination remains weak after threshold selection;
-4. keep any later imbalance, regularization, architecture, or transformer experiment as a separate controlled comparison;
-5. reserve the official Civil Comments test split for a final configuration rather than repeated development feedback.
+> Does an explicit binary Stage 1 routing head, trained on `toxicity >= 0.4`, reduce end-to-end propagation error beyond the nested-threshold baseline of `0.4412` Macro F1?
+
+Weighted losses, focal/asymmetric loss, oversampling, architecture replacement, transformer baselines, and fairness expansion remain deferred until this narrower hypothesis is tested.

@@ -14,10 +14,12 @@ import pandas as pd
 
 from hate_speech_detection.target_strategy import (
     DEFAULT_GATE_THRESHOLD,
+    STAGE1_ROUTE_TARGET_NAME,
     STAGE1_TARGET_COLUMNS,
     STAGE2_TARGET_COLUMNS,
     analyze_gate_coverage,
     get_stage1_targets,
+    get_stage1_targets_with_route,
     get_stage2_binary_targets,
     get_stage2_gate_mask,
     get_stage2_targets,
@@ -54,6 +56,24 @@ class TargetStrategyTests(unittest.TestCase):
         binary = get_stage2_binary_targets(self.frame, label_threshold=0.5)
         self.assertEqual(int(binary[0, insult_index]), 1)
         self.assertEqual(int(binary[0, obscene_index]), 1)
+
+    def test_explicit_route_target_is_derived_without_changing_soft_targets(self):
+        combined = get_stage1_targets_with_route(
+            self.frame,
+            gate_threshold=0.4,
+        )
+
+        self.assertEqual(STAGE1_ROUTE_TARGET_NAME, "route")
+        self.assertEqual(combined.shape, (4, 3))
+        np.testing.assert_allclose(
+            combined[:, :2],
+            get_stage1_targets(self.frame),
+        )
+        np.testing.assert_array_equal(
+            combined[:, 2],
+            np.array([1.0, 1.0, 1.0, 0.0], dtype=np.float32),
+        )
+        self.assertNotIn(STAGE1_ROUTE_TARGET_NAME, self.frame.columns)
 
     def test_default_gate_uses_selected_threshold(self):
         self.assertEqual(DEFAULT_GATE_THRESHOLD, 0.4)

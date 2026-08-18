@@ -12,7 +12,7 @@ The repaired code path now has a separate reproducibility baseline:
 - the pinned local environment passed dependency compatibility checks;
 - `scripts/analyze_gate_coverage.py` executed against the full Civil Comments training split using the current `google/civil_comments` dataset source;
 - a full two-fold hierarchical fixed-threshold baseline was executed on Google Colab on 2026-08-18;
-- the current runner adds nested prediction-threshold selection without changing the architecture or training loss.
+- the nested threshold-selection experiment was also executed successfully on the full training split on 2026-08-18 without changing the architecture or BCE training loss.
 
 Two repaired code paths exist outside the historical notebook:
 
@@ -46,9 +46,9 @@ On POSIX/Linux shells, use `.venv/bin/python` instead of `.venv/Scripts/python.e
 
 The historical notebook predates these pins. They describe the repaired runtime, not the unrecorded original notebook environment.
 
-## Recorded Colab baseline runtime
+## Recorded Colab runtime
 
-The completed two-fold fixed-threshold hierarchical baseline was executed in a Google Colab Tesla T4 session. The notebook reported:
+The completed two-fold hierarchical experiments were executed in a Google Colab Tesla T4 session. The notebook reported:
 
 ```text
 TensorFlow              2.20.0
@@ -58,7 +58,7 @@ scikit-learn            1.6.1
 GPU                     Tesla T4
 ```
 
-This Colab runtime is recorded because it produced the fixed-threshold baseline in `EXPERIMENT_HISTORY.md`. It is not claimed to be byte-for-byte identical to the pinned local environment. Any final reported result should record the exact runtime that generated it.
+This Colab runtime is recorded because it produced the full-data evidence in `EXPERIMENT_HISTORY.md`. It is not claimed to be byte-for-byte identical to the pinned local environment. Any final reported result should record the exact runtime that generated it.
 
 ## Repository-level validation
 
@@ -93,7 +93,7 @@ The analysis can be reproduced with:
 python scripts/analyze_gate_coverage.py
 ```
 
-The ground-truth gate is a target/data definition. The predicted Stage 1 routing threshold is now treated separately and selected from model outputs inside nested validation.
+The ground-truth gate is a target/data definition. The predicted Stage 1 routing threshold is treated separately and selected from model outputs inside nested validation.
 
 ## Hierarchical experiment protocol
 
@@ -159,17 +159,9 @@ python scripts/run_hierarchical_cv.py --max-samples 50000 --n-splits 2 --epochs 
 
 Metrics produced with `--max-samples` are diagnostic only and must not be reported as the full-dataset benchmark.
 
-The number of outer folds can be increased later when additional stability evidence is worth the computational cost. The exact fold count used for any reported result must be recorded with that result.
+## Completed full-data evidence
 
-The earlier leakage-safe multiclass comparison path remains available as:
-
-```bash
-python scripts/run_leakage_safe_cv.py
-```
-
-## Current fixed-threshold evidence
-
-The completed full-data two-fold fixed-threshold baseline is recorded in `EXPERIMENT_HISTORY.md`. Its main results were:
+### Earlier repaired fixed-threshold baseline
 
 ```text
 Stage 1 recall                  0.4614
@@ -178,14 +170,30 @@ Stage 2 oracle Macro F1         0.4674
 End-to-end Macro F1             0.3484
 ```
 
-Those values motivate the nested threshold diagnostic. They do not establish that threshold tuning will improve the outer-fold result.
+### PR #10 nested-threshold run — same model fits for fixed/tuned comparison
+
+```text
+Stage 1 fixed F1                0.5567
+Stage 1 tuned F1                0.6319
+Stage 1 tuned recall            0.5653
+Stage 1 PR-AUC / AP             0.7095
+Stage 1 ROC-AUC                 0.9195
+Stage 2 oracle fixed Macro F1   0.4766
+Stage 2 oracle tuned Macro F1   0.5959
+End-to-end fixed Macro F1       0.3496
+End-to-end tuned Macro F1       0.4412
+```
+
+The selected Stage 1 routing thresholds were `0.27` and `0.30` across the two folds. Per-label Stage 2 thresholds were also in similar operating regions across folds (`0.33` to `0.46`). Full per-label results are recorded in `EXPERIMENT_HISTORY.md`.
+
+This outer-fold evidence confirms that threshold mismatch explained a meaningful fraction of the earlier error. It does not eliminate the remaining hierarchical propagation gap.
 
 ## What remains unvalidated
 
 The current evidence does not yet:
 
-- provide outer-fold results from the new nested threshold-selection path;
-- prove that threshold selection closes the Stage 2 oracle/end-to-end gap;
+- resolve the remaining Stage 2 oracle/end-to-end propagation gap;
+- test whether direct binary routing supervision improves Stage 1 beyond the nested threshold baseline;
 - resolve the confirmed early overfitting behavior;
 - pin a specific immutable Civil Comments dataset revision;
 - validate fairness, robustness, or production suitability;
