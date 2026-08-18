@@ -11,7 +11,11 @@ if str(SRC) not in sys.path:
 
 import pandas as pd
 
-from hate_speech_detection.hierarchical_splits import make_hierarchical_splits
+from hate_speech_detection.hierarchical_splits import (
+    make_hierarchical_splits,
+    make_stage1_inner_split,
+    make_stage2_inner_split,
+)
 from hate_speech_detection.target_strategy import STAGE2_TARGET_COLUMNS
 
 
@@ -110,6 +114,65 @@ class HierarchicalSplitTests(unittest.TestCase):
                     original_toxic_indices
                 )
             )
+
+    def test_stage1_inner_validation_never_uses_outer_validation(self):
+        outer = make_hierarchical_splits(
+            self.frame,
+            n_splits=2,
+            random_state=42,
+        )[0]
+        inner = make_stage1_inner_split(
+            self.frame,
+            outer.train_indices,
+            validation_fraction=0.25,
+            random_state=43,
+        )
+
+        fit_indices = set(int(index) for index in inner.train_indices)
+        stop_indices = set(int(index) for index in inner.validation_indices)
+        outer_train = set(int(index) for index in outer.train_indices)
+        outer_validation = set(int(index) for index in outer.validation_indices)
+
+        self.assertTrue(fit_indices.isdisjoint(stop_indices))
+        self.assertEqual(fit_indices | stop_indices, outer_train)
+        self.assertTrue((fit_indices | stop_indices).isdisjoint(outer_validation))
+
+        fit_gate = self.frame.iloc[inner.train_indices]["toxicity"] >= 0.4
+        stop_gate = self.frame.iloc[inner.validation_indices]["toxicity"] >= 0.4
+        self.assertTrue(fit_gate.any())
+        self.assertTrue((~fit_gate).any())
+        self.assertTrue(stop_gate.any())
+        self.assertTrue((~stop_gate).any())
+
+    def test_stage2_inner_validation_never_uses_outer_validation(self):
+        outer = make_hierarchical_splits(
+            self.frame,
+            n_splits=2,
+            random_state=42,
+        )[0]
+        inner = make_stage2_inner_split(
+            self.frame,
+            outer.stage2_train_indices,
+            validation_fraction=0.25,
+            random_state=43,
+        )
+
+        fit_indices = set(int(index) for index in inner.train_indices)
+        stop_indices = set(int(index) for index in inner.validation_indices)
+        outer_train = set(int(index) for index in outer.stage2_train_indices)
+        outer_validation = set(
+            int(index) for index in outer.stage2_validation_indices
+        )
+
+        self.assertTrue(fit_indices.isdisjoint(stop_indices))
+        self.assertEqual(fit_indices | stop_indices, outer_train)
+        self.assertTrue((fit_indices | stop_indices).isdisjoint(outer_validation))
+        self.assertTrue(
+            (self.frame.iloc[inner.train_indices]["toxicity"] >= 0.4).all()
+        )
+        self.assertTrue(
+            (self.frame.iloc[inner.validation_indices]["toxicity"] >= 0.4).all()
+        )
 
 
 if __name__ == "__main__":

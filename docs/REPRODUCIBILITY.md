@@ -7,7 +7,8 @@ This repository preserves a historical CNN + Bi-LSTM experiment whose exact orig
 The repaired code path now has a separate validated runtime baseline:
 
 - Python `3.12` is declared in `.python-version`;
-- `requirements.txt` pins the dependency versions installed and checked on Windows 11 on 2026-08-18;
+- `requirements.txt` pins the dependency versions used by the repaired pipeline;
+- TensorFlow `2.20.0` was validated with GPU detection under WSL2 after TensorFlow `2.21.0` failed to register the same NVIDIA GPU in that environment;
 - the pinned environment passed dependency compatibility checks and imported the repaired ML/data stack successfully;
 - `scripts/analyze_gate_coverage.py` executed against the full Civil Comments training split using the current `google/civil_comments` dataset source.
 
@@ -20,13 +21,13 @@ Two repaired code paths exist outside the historical notebook:
 
 Neither runner has produced replacement benchmark metrics that are approved for publication.
 
-## Validated local runtime
+## Validated runtime
 
-The repaired runtime was validated with:
+The repaired runtime currently pins:
 
 ```text
 Python                  3.12
-TensorFlow              2.21.0
+TensorFlow              2.20.0
 NumPy                   2.5.2
 pandas                  3.0.5
 matplotlib              3.11.1
@@ -56,7 +57,7 @@ python -m compileall -q src scripts
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-These checks verify repository layout, source syntax, notebook JSON/nbformat integrity, historical leakage protections, hierarchical target extraction, preservation of overlapping labels, gate behavior, fold disjointness, multilabel-aware toxic-sample stratification, the namespaced Civil Comments dataset identifier, and absence of Stage 2 oversampling in the new strategy.
+These checks verify repository layout, source syntax, notebook JSON/nbformat integrity, historical leakage protections, hierarchical target extraction, preservation of overlapping labels, gate behavior, outer-fold disjointness, internal early-stopping isolation, multilabel-aware toxic-sample stratification, the namespaced Civil Comments dataset identifier, and absence of Stage 2 oversampling in the new strategy.
 
 GitHub Actions runs the same validation on pull requests and pushes to `main`. The CI job uses Python 3.12 with the same pinned lightweight data/validation dependencies required by regression tests; it intentionally does not install TensorFlow or execute model training.
 
@@ -84,13 +85,29 @@ The script defaults to the centrally defined selected gate but still accepts `--
 
 ## Hierarchical experiment command
 
-After installing the full runtime dependencies from `requirements.txt`, the hierarchical runner can be started with:
+The hierarchical runner now uses two outer folds by default for the initial experimental cycle. Within each outer training fold, 10% of the training rows are reserved as an internal early-stopping partition. The outer validation fold is not passed to Keras during fitting and is used only for final Stage 1, Stage 2 oracle, and end-to-end metrics.
+
+Run the current full-dataset initial experiment with:
 
 ```bash
 python scripts/run_hierarchical_cv.py
 ```
 
-It performs five-fold training and separately reports Stage 1 routing, Stage 2 oracle, and end-to-end subtype metrics. It is computationally expensive and is intentionally not part of CI.
+The equivalent explicit command is:
+
+```bash
+python scripts/run_hierarchical_cv.py --n-splits 2 --epochs 5
+```
+
+For smoke and debugging runs, a deterministic sample limit and smaller epoch count can be used:
+
+```bash
+python scripts/run_hierarchical_cv.py --max-samples 100000 --n-splits 2 --epochs 2
+```
+
+Metrics produced with `--max-samples` are diagnostic only and must not be reported as the full-dataset benchmark.
+
+The number of outer folds can be increased later (for example to 3) when additional stability evidence is worth the computational cost. The exact fold count used for any reported result must be recorded with that result.
 
 The earlier leakage-safe multiclass comparison path remains available as:
 
@@ -116,12 +133,12 @@ Before new metrics are promoted as a validated benchmark, reproducibility eviden
 1. the declared Python and pinned dependency versions;
 2. deterministic seeds where supported;
 3. the dataset source and immutable revision/configuration used for the metric run;
-4. preprocessing, split, routing, and target configuration;
+4. preprocessing, outer split, internal early-stopping split, routing, and target configuration;
 5. the measured gate-coverage report;
 6. hardware/runtime notes when they materially affect execution;
 7. commands required to train and evaluate from a clean environment;
 8. Stage 1, Stage 2 oracle, and end-to-end metrics tied to the corresponding code revision;
 9. generated evaluation artifacts tied to that same revision;
-10. train/validation behavior sufficient to assess the known overfitting risk.
+10. train/internal-validation behavior sufficient to assess the known overfitting risk.
 
 No historical or replacement metric should be promoted to a validated benchmark until the corresponding training and evaluation procedure has been executed successfully.
