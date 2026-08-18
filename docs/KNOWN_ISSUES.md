@@ -8,7 +8,7 @@ This document records known limitations and unresolved evaluation concerns in th
 
 Overfitting was confirmed in the historical notebook experiment. The preserved outputs and metrics must therefore be treated as a historical baseline rather than as evidence of final or production-ready performance.
 
-The repaired two-fold hierarchical baseline also showed very early best inner-validation epochs: Stage 1 selected epochs 2 and 1 across the two folds, while Stage 2 selected epochs 2 and 3. EarlyStopping limits the damage, but the architecture still begins to overfit quickly and this remains unresolved.
+The repaired hierarchical experiments also select very early best inner-validation epochs. EarlyStopping limits the damage, but the architecture still begins to overfit quickly and this remains unresolved.
 
 ## Historical evaluation issues
 
@@ -46,11 +46,11 @@ At this threshold:
 - any-positive coverage is 99.578%;
 - `sexual_explicit` remains the most affected subtype, with 226 of 4,686 positives (4.823%) excluded by the ground-truth gate.
 
-This definition determines Stage 2 membership and oracle evaluation. It does not prove that a trained Stage 1 model should use `0.4` as its prediction threshold.
+This definition determines Stage 2 membership and oracle evaluation. It does not imply that a trained Stage 1 score should also use `0.4` as its prediction threshold.
 
 ### Hierarchical propagation error
 
-The repaired two-fold fixed-threshold baseline quantified a substantial propagation gap:
+The first repaired fixed-threshold baseline quantified a substantial propagation gap:
 
 ```text
 Stage 1 recall                  0.4614
@@ -58,32 +58,52 @@ Stage 2 oracle Macro F1         0.4674
 End-to-end Macro F1             0.3484
 ```
 
-The Stage 1 accuracy was 0.9266, but the much lower recall shows that accuracy is dominated by the non-routed majority and is not sufficient evidence of a useful routing gate.
+The nested threshold diagnostic then reduced part of this error without changing the architecture or loss:
 
-A two-stage system can lose subtype positives permanently when Stage 1 fails to route a sample. For this reason, Stage 2 oracle metrics are insufficient on their own.
+```text
+Stage 1 tuned recall            0.5653
+Stage 1 tuned F1                0.6319
+Stage 2 oracle tuned Macro F1   0.5959
+End-to-end tuned Macro F1       0.4412
+```
 
-The current runner therefore separates:
+Stage 1 PR-AUC/average precision was `0.7095` and ROC-AUC was `0.9195`. This supports the conclusion that fixed-threshold mismatch explained a meaningful part of the original routing problem.
 
-1. Stage 1 toxicity-gate metrics;
+However, the remaining oracle-to-end-to-end gap is still `0.1547` Macro F1 (`0.5959 - 0.4412`). A two-stage system permanently loses subtype predictions when Stage 1 does not route a sample, so propagation error remains an active limitation.
+
+The runner therefore keeps three distinct evaluation views:
+
+1. Stage 1 routing metrics;
 2. Stage 2 oracle metrics using ground-truth routing;
 3. end-to-end subtype metrics using predicted Stage 1 routing.
 
-### Prediction-threshold mismatch
+Stage 2 oracle metrics must not be presented as end-to-end system performance.
 
-The fixed baseline used `0.4` for predicted Stage 1 routing and `0.5` for all Stage 2 labels. Those values are convenient references but are not guaranteed to be optimal operating points for model outputs.
+### Prediction-threshold mismatch — partially resolved
 
-The current experimental path now selects prediction thresholds only inside the common inner validation partition:
+The fixed baseline used `0.4` for predicted Stage 1 routing and `0.5` for all Stage 2 labels. PR #10 tested nested threshold selection using only the common inner validation partition and freezing thresholds before outer evaluation.
 
-- Stage 2 thresholds are selected per label by F1;
-- the Stage 1 routing threshold is selected by end-to-end Macro F1;
-- fixed-threshold metrics are retained from the same trained models for direct comparison;
-- the outer validation fold remains untouched until final evaluation.
+The full-data two-fold result improved:
 
-This is a diagnostic before introducing more expensive training changes. If PR-AUC/average precision is strong while tuned F1 improves materially, threshold mismatch explains part of the error. If discrimination remains weak, loss weighting, regularization, or architecture changes become better-supported follow-up experiments.
+- Stage 1 F1: `0.5567 -> 0.6319` within the PR #10 same-fit comparison;
+- Stage 2 oracle Macro F1: `0.4766 -> 0.5959`;
+- end-to-end Macro F1: `0.3496 -> 0.4412`.
+
+Selected thresholds were also reasonably consistent across the two full-data folds: Stage 1 routing selected `0.27` and `0.30`, while Stage 2 label thresholds stayed between `0.33` and `0.46`.
+
+Threshold mismatch is therefore no longer an untested hypothesis; it is a confirmed contributor to the earlier error. It is not, by itself, a complete solution because the remaining propagation gap is still material.
+
+### Stage 1 training-objective alignment
+
+Stage 1 is currently trained only on fractional `toxicity` and `severe_toxicity` scores, while its operational role is a binary routing decision defined by `toxicity >= 0.4`.
+
+The next controlled experiment will add an explicit binary routing output while preserving both existing soft outputs. The experiment should change no other major training factor. Its purpose is to test whether direct supervision of the operational decision improves end-to-end Macro F1 beyond the nested-threshold baseline of `0.4412`.
+
+Weighted BCE, focal/asymmetric loss, oversampling, architecture replacement, and transformer baselines remain deferred until this narrower hypothesis is tested.
 
 ### Runtime reproducibility across local and Colab environments
 
-The repaired local environment is pinned in `requirements.txt`, while the completed fixed-threshold baseline was executed in a Colab Tesla T4 runtime whose NumPy/pandas/scikit-learn versions differed from the local pins. The exact Colab versions are recorded in `REPRODUCIBILITY.md`.
+The repaired local environment is pinned in `requirements.txt`, while the completed Colab runs used a Tesla T4 runtime whose NumPy/pandas/scikit-learn versions differed from the local pins. The exact Colab versions are recorded in `REPRODUCIBILITY.md`.
 
 Any final reported metric must record the exact execution environment that generated it. A final result should not silently combine metrics from different unrecorded runtimes.
 
@@ -95,12 +115,13 @@ Until the remaining re-evaluation work is complete, the project should not claim
 - validated F1 around 0.90 as the final benchmark;
 - demonstrated cross-language generalization;
 - resolved overfitting;
-- an empirically optimal predicted routing threshold before outer validation confirms it;
+- that nested threshold selection eliminates hierarchical propagation error;
+- that the next routing-head experiment is superior before outer validation is executed;
 - validated fairness, robustness, or deployment suitability;
 - a final official-test result before the development configuration is frozen.
 
 ## Current scope
 
-The historical notebook is preserved as an immutable experimental reference. Leakage-safe evaluation, the hierarchical target strategy, full-train gate analysis, a repaired two-fold fixed-threshold baseline, and nested threshold selection now exist as separate, reviewable steps.
+The historical notebook is preserved as an immutable experimental reference. Leakage-safe evaluation, the hierarchical target strategy, full-train gate analysis, a repaired fixed-threshold baseline, and a completed nested threshold diagnostic now exist as separate, reviewable evidence.
 
-The immediate next step is to run the nested threshold diagnostic and compare fixed versus tuned outer-fold metrics from the same model fits. More invasive imbalance or architecture experiments should be added only if that evidence shows they are needed.
+The immediate next experiment is the explicit binary Stage 1 routing head. More invasive imbalance or architecture experiments should be added only if that evidence shows they are needed.
