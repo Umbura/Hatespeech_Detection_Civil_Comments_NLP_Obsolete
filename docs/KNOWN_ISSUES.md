@@ -1,36 +1,49 @@
 # Known Issues
 
-This document records known limitations and unresolved evaluation concerns in the historical experiment preserved in this repository. These items are documented for traceability and are not presented as resolved defects.
+This document records known limitations and unresolved evaluation concerns in the historical experiment preserved in this repository.
 
 ## Confirmed issue
 
 ### Model overfitting
 
-Overfitting was confirmed in the current notebook experiment. The preserved model outputs and metrics must therefore be treated as a historical baseline rather than as evidence of final or production-ready performance.
+Overfitting was confirmed in the historical notebook experiment. The preserved model outputs and metrics must therefore be treated as a historical baseline rather than as evidence of final or production-ready performance.
 
-The repair phase must re-evaluate training/validation behavior after the experimental pipeline is corrected.
+The repair phase must re-evaluate training/validation behavior after the experimental pipeline and target formulation are corrected.
 
-## Evaluation concerns requiring correction or explicit review
+## Evaluation concerns
 
 ### Cross-validation preprocessing and balancing order
 
-The historical notebook balances the dataset and fits the tokenizer before `StratifiedKFold` creates the train/validation folds.
+The historical notebook balances the dataset and fits the tokenizer before `StratifiedKFold` creates the train/validation folds. That ordering can contaminate validation because resampled examples and learned preprocessing are created before fold isolation.
 
-This ordering creates a risk of train/validation contamination and prevents the current cross-validation outputs from being treated as a clean benchmark. Oversampling performed before fold creation is particularly important to correct because duplicated samples may be distributed across training and validation subsets.
+A leakage-safe replacement path is now implemented in:
 
-The magnitude of the effect on the saved metrics has not yet been measured. A repaired evaluation must perform fold-specific preprocessing and keep validation data untouched by training-only resampling.
+- `src/hate_speech_detection/cv_pipeline.py`;
+- `scripts/run_leakage_safe_cv.py`.
+
+The repaired order is:
+
+1. create stratified folds from the raw labeled dataset;
+2. isolate training and validation rows;
+3. balance only the training partition;
+4. fit a new tokenizer only on that fold's balanced training text;
+5. transform the untouched validation text with the training-fitted tokenizer.
+
+Regression tests verify that validation rows cannot enter training resampling, validation text is not exposed during tokenizer fitting, training and validation source IDs remain disjoint, and each sample appears in validation exactly once across the configured stratified folds.
+
+The historical notebook remains unchanged and still contains the old evaluation procedure. The new runner has not yet been used to publish replacement model metrics, so the effect of this correction on model performance remains **unmeasured**.
 
 ### Target-label definition
 
-The notebook constructs a single multiclass target by scanning toxicity score columns and selecting the first label whose score exceeds the configured threshold.
+The historical target rule is intentionally preserved in the leakage-safe runner so this change does not mix two scientific variables.
 
-The historical configuration includes `severe_toxicity`, while the saved balanced output contains seven final labels without `severe_toxicity`. The target formulation, precedence rule, threshold behavior, and intended handling of overlapping toxicity categories require explicit review before retraining.
+The code constructs a single multiclass target by scanning toxicity score columns and selecting the first label whose score exceeds the configured threshold. The configuration includes `severe_toxicity`, while the saved historical balanced output contains seven final labels without `severe_toxicity`.
 
-This repository does not yet claim that multiclass or multilabel formulation is the correct final design.
+The target formulation, precedence rule, threshold behavior, and handling of overlapping toxicity categories still require explicit review before final retraining. This repository does not yet claim that multiclass or multilabel formulation is the correct final design.
 
 ## Unsupported claims intentionally avoided
 
-Until the repair and re-evaluation work is complete, the project should not claim:
+Until the remaining repair and re-evaluation work is complete, the project should not claim:
 
 - production readiness;
 - validated F1 around 0.90 as the final benchmark;
@@ -40,4 +53,4 @@ Until the repair and re-evaluation work is complete, the project should not clai
 
 ## Current scope
 
-The historical notebook remains preserved so future experimental changes can be compared against a traceable baseline. Model repair, target reformulation, leakage prevention, retraining, and final evaluation are separate follow-up work.
+The historical notebook is preserved as an immutable experimental reference. Leakage-safe fold preparation is implemented separately and covered by regression tests. Target reformulation, overfitting repair, full retraining, and publication of replacement metrics remain separate follow-up work.

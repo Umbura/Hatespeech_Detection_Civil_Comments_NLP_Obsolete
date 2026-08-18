@@ -1,13 +1,23 @@
 # Tests
 
-The current automated tests validate repository integrity only. They intentionally do not claim model-quality, training, or evaluation coverage while the historical experimental pipeline remains under repair.
+The automated suite now covers both repository integrity and the isolation guarantees of the repaired cross-validation preparation path. It still does not claim end-to-end model-quality or training coverage.
 
-Run them from the repository root with:
+Install the lightweight validation dependencies and run the suite from the repository root:
 
 ```bash
+python -m pip install pandas numpy scikit-learn imbalanced-learn
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Current checks cover the expected repository layout, notebook JSON/nbformat integrity, preservation of the notebook under `notebooks/`, and README references to the current notebook path.
+Current checks cover:
 
-Scientific regression tests will be added when the training and evaluation logic is extracted from the historical notebook into testable modules.
+- expected repository layout and canonical repaired-pipeline files;
+- notebook JSON/nbformat integrity and preservation under `notebooks/`;
+- README references to the historical notebook path;
+- disjoint training/validation indices;
+- training-only resampling with source-row traceability;
+- validation rows remaining untouched by balancing;
+- validation text never being used to fit the fold tokenizer;
+- complete validation coverage across stratified folds.
+
+The suite does not execute TensorFlow training, download Civil Comments, validate final target semantics, or prove that overfitting is resolved.
