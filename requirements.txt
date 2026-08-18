@@ -3,7 +3,7 @@
 # Civil Comments gate-coverage analysis on 2026-08-18.
 # The preserved notebook predates these pins and remains historical evidence.
 
-tensorflow==2.21.0
+tensorflow==2.20.0
 pandas==3.0.5
 numpy==2.5.2
 matplotlib==3.11.1
