@@ -6,7 +6,7 @@ with K-fold splitting, then both partitions are recombined into full train and
 validation folds.
 
 The target scores themselves remain fractional for training; binarization here
-is used only to construct evaluation folds.
+is used only to construct evaluation folds and internal early-stopping splits.
 """
 
 from __future__ import annotations
@@ -34,6 +34,14 @@ class HierarchicalSplit:
     stage2_validation_indices: np.ndarray
 
 
+@dataclass(frozen=True)
+class TrainValidationSplit:
+    """A training-only split used for early stopping without touching outer validation."""
+
+    train_indices: np.ndarray
+    validation_indices: np.ndarray
+
+
 def make_hierarchical_splits(
     frame: Any,
     *,
@@ -42,7 +50,7 @@ def make_hierarchical_splits(
     gate_threshold: float = DEFAULT_GATE_THRESHOLD,
     label_threshold: float = DEFAULT_LABEL_THRESHOLD,
 ) -> list[HierarchicalSplit]:
-    """Create deterministic folds that preserve fine-grained multilabel balance.
+    """Create deterministic outer folds that preserve fine-grained multilabel balance.
 
     Stage 2 toxic examples are split with ``MultilabelStratifiedKFold``.
     Non-toxic examples are split independently with ``KFold``. Corresponding
@@ -121,3 +129,98 @@ def make_hierarchical_splits(
         )
 
     return splits
+
+
+def make_stage1_inner_split(
+    frame: Any,
+    train_indices: np.ndarray,
+    *,
+    validation_fraction: float = 0.1,
+    random_state: int = 42,
+    gate_threshold: float = DEFAULT_GATE_THRESHOLD,
+) -> TrainValidationSplit:
+    """Split one outer training fold for Stage 1 fitting and early stopping.
+
+    The split is stratified on the binary toxicity routing target so the outer
+    validation fold remains untouched until final metric computation.
+    """
+
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError("validation_fraction must be between 0 and 1")
+
+    from sklearn.model_selection import StratifiedShuffleSplit
+
+    outer_train = np.asarray(train_indices, dtype=np.int64)
+    if outer_train.size < 4:
+        raise ValueError("not enough samples to create an internal validation split")
+
+    local_frame = frame.iloc[outer_train]
+    gate_targets = get_stage2_gate_mask(
+        local_frame,
+        gate_threshold=gate_threshold,
+    ).astype(np.int8)
+    if np.unique(gate_targets).size < 2:
+        raise ValueError("Stage 1 internal split requires both routed and non-routed samples")
+
+    splitter = StratifiedShuffleSplit(
+        n_splits=1,
+        test_size=validation_fraction,
+        random_state=random_state,
+    )
+    fit_positions, stop_positions = next(
+        splitter.split(
+            np.zeros((outer_train.size, 1), dtype=np.int8),
+            gate_targets,
+        )
+    )
+
+    return TrainValidationSplit(
+        train_indices=np.sort(outer_train[fit_positions]),
+        validation_indices=np.sort(outer_train[stop_positions]),
+    )
+
+
+def make_stage2_inner_split(
+    frame: Any,
+    stage2_train_indices: np.ndarray,
+    *,
+    validation_fraction: float = 0.1,
+    random_state: int = 42,
+    label_threshold: float = DEFAULT_LABEL_THRESHOLD,
+) -> TrainValidationSplit:
+    """Split routed outer-training rows for Stage 2 fitting and early stopping.
+
+    Iterative multilabel stratification is reused here so rare fine-grained
+    labels remain represented while the outer Stage 2 validation partition is
+    reserved exclusively for final evaluation.
+    """
+
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError("validation_fraction must be between 0 and 1")
+
+    from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
+
+    outer_train = np.asarray(stage2_train_indices, dtype=np.int64)
+    if outer_train.size < 4:
+        raise ValueError("not enough routed samples to create an internal validation split")
+
+    targets = get_stage2_binary_targets(
+        frame.iloc[outer_train],
+        label_threshold=label_threshold,
+    )
+    splitter = MultilabelStratifiedShuffleSplit(
+        n_splits=1,
+        test_size=validation_fraction,
+        random_state=random_state,
+    )
+    fit_positions, stop_positions = next(
+        splitter.split(
+            np.zeros((outer_train.size, 1), dtype=np.int8),
+            targets,
+        )
+    )
+
+    return TrainValidationSplit(
+        train_indices=np.sort(outer_train[fit_positions]),
+        validation_indices=np.sort(outer_train[stop_positions]),
+    )
