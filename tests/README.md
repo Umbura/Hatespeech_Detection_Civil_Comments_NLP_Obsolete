@@ -1,23 +1,27 @@
 # Tests
 
-The automated suite now covers both repository integrity and the isolation guarantees of the repaired cross-validation preparation path. It still does not claim end-to-end model-quality or training coverage.
+The automated suite validates repository integrity, historical leakage protections, and the deterministic parts of the repaired hierarchical target strategy. It does not claim model-quality or training coverage.
 
-Install the lightweight validation dependencies and run the suite from the repository root:
+Run the suite from the repository root with:
 
 ```bash
-python -m pip install pandas numpy scikit-learn imbalanced-learn
+python -m pip install pandas numpy scikit-learn imbalanced-learn 'iterative-stratification>=0.1.9'
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Current checks cover:
 
-- expected repository layout and canonical repaired-pipeline files;
-- notebook JSON/nbformat integrity and preservation under `notebooks/`;
-- README references to the historical notebook path;
-- disjoint training/validation indices;
-- training-only resampling with source-row traceability;
-- validation rows remaining untouched by balancing;
-- validation text never being used to fit the fold tokenizer;
-- complete validation coverage across stratified folds.
+- expected repository layout;
+- historical notebook JSON/nbformat integrity and preservation;
+- README references to the current notebook path;
+- train/validation isolation in the leakage-safe legacy comparison path;
+- training-only resampling and tokenizer fitting in that legacy path;
+- Stage 1 and Stage 2 target extraction from the original fractional scores;
+- preservation of overlapping fine-grained labels;
+- absence of a synthetic `non_toxic` output target;
+- toxicity-gate coverage accounting;
+- hierarchical fold disjointness and full validation coverage;
+- iterative multilabel stratification of toxic samples;
+- absence of Stage 2 oversampling in the hierarchical split strategy.
 
-The suite does not execute TensorFlow training, download Civil Comments, validate final target semantics, or prove that overfitting is resolved.
+TensorFlow training, real-dataset gate analysis, model metrics, overfitting, and fairness are intentionally outside CI and require separate experimental validation.
