@@ -12,6 +12,7 @@ NOTEBOOK = ROOT / "notebooks" / "Hatespeech_Detection_LSTM_CNN.ipynb"
 class RepositoryIntegrityTests(unittest.TestCase):
     def test_expected_project_paths_exist(self) -> None:
         expected_paths = [
+            ROOT / ".python-version",
             ROOT / "AGENTS.md",
             ROOT / "README.md",
             ROOT / "README_PT.md",
@@ -55,6 +56,18 @@ class RepositoryIntegrityTests(unittest.TestCase):
         for readme_name in ("README.md", "README_PT.md"):
             content = (ROOT / readme_name).read_text(encoding="utf-8")
             self.assertIn(expected_path, content, f"{readme_name} does not reference the current notebook path")
+
+    def test_runtime_scripts_use_namespaced_civil_comments_id(self) -> None:
+        script_names = (
+            "analyze_gate_coverage.py",
+            "run_hierarchical_cv.py",
+            "run_leakage_safe_cv.py",
+        )
+
+        for script_name in script_names:
+            content = (ROOT / "scripts" / script_name).read_text(encoding="utf-8")
+            self.assertIn('load_dataset("google/civil_comments"', content)
+            self.assertNotIn('load_dataset("civil_comments"', content)
 
 
 if __name__ == "__main__":
