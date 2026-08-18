@@ -5,8 +5,9 @@ order-dependent multiclass label. The repaired strategy keeps the original
 fractional annotation scores and separates the task into two stages:
 
 Stage 1
-    ``toxicity`` as the routing signal plus ``severe_toxicity`` as an
-    auxiliary output, both trained as soft targets.
+    ``toxicity`` plus ``severe_toxicity`` as fractional soft targets. Controlled
+    experiments may additionally derive an explicit binary ``route`` target from
+    the selected ground-truth routing definition without modifying source data.
 
 Stage 2
     Five independent fine-grained toxicity outputs, also trained as soft
@@ -24,6 +25,8 @@ STAGE1_TARGET_COLUMNS = (
     "toxicity",
     "severe_toxicity",
 )
+
+STAGE1_ROUTE_TARGET_NAME = "route"
 
 STAGE2_TARGET_COLUMNS = (
     "obscene",
@@ -63,6 +66,26 @@ def get_stage1_targets(frame: Any) -> np.ndarray:
 
     validate_target_frame(frame)
     return frame.loc[:, STAGE1_TARGET_COLUMNS].to_numpy(dtype=np.float32, copy=True)
+
+
+def get_stage1_targets_with_route(
+    frame: Any,
+    *,
+    gate_threshold: float = DEFAULT_GATE_THRESHOLD,
+) -> np.ndarray:
+    """Return Stage 1 soft targets plus an explicit binary routing target.
+
+    Output column order is ``toxicity``, ``severe_toxicity``, ``route``. The
+    route target is derived only from the existing toxicity annotation and the
+    configured ground-truth gate; no source-data column is added or mutated.
+    """
+
+    soft_targets = get_stage1_targets(frame)
+    route = get_stage2_gate_mask(
+        frame,
+        gate_threshold=gate_threshold,
+    ).astype(np.float32)
+    return np.column_stack([soft_targets, route]).astype(np.float32, copy=False)
 
 
 def get_stage2_targets(frame: Any) -> np.ndarray:
