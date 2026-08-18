@@ -1,12 +1,13 @@
-# Runtime dependencies used by the historical notebook and repaired pipeline.
-# Exact historical package versions were not recorded, so this file is not a lockfile.
-# A validated, reproducible environment will be captured after the experimental pipeline is repaired.
+# Validated runtime for the repaired pipeline on Python 3.12.
+# These versions passed dependency compatibility checks and executed the real
+# Civil Comments gate-coverage analysis on 2026-08-18.
+# The preserved notebook predates these pins and remains historical evidence.
 
-tensorflow>=2.10.0
-pandas
-numpy
-matplotlib
-scikit-learn
-imbalanced-learn
-datasets
-iterative-stratification>=0.1.9
+tensorflow==2.21.0
+pandas==3.0.5
+numpy==2.5.2
+matplotlib==3.11.1
+scikit-learn==1.9.0
+imbalanced-learn==0.14.2
+datasets==5.0.0
+iterative-stratification==0.1.9

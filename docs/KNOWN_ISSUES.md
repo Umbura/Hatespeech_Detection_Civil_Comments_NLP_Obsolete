@@ -8,7 +8,7 @@ This document records known limitations and unresolved evaluation concerns in th
 
 Overfitting was confirmed in the historical notebook experiment. The preserved outputs and metrics must therefore be treated as a historical baseline rather than as evidence of final or production-ready performance.
 
-The hierarchical target reformulation does not attempt to repair overfitting. Training/validation behavior must be re-evaluated separately after the target and evaluation pipeline changes are merged.
+The hierarchical target reformulation does not attempt to repair overfitting. Training/validation behavior must be re-evaluated separately after the target and evaluation pipeline changes.
 
 ## Historical evaluation issues
 
@@ -24,7 +24,7 @@ A leakage-safe replacement path was introduced in PR #4. Regression tests cover 
 
 The historical target rule scans toxicity score columns in a fixed order and selects the first label above the configured threshold. This makes class assignment order-dependent and discards overlapping toxicity attributes. `severe_toxicity` is configured historically but is absent from the saved final balanced labels.
 
-Issue #5 replaces this rule in the new experimental path with the hierarchical strategy documented in `TARGET_STRATEGY.md`:
+Issue #5 replaced this rule in the new experimental path with the hierarchical strategy documented in `TARGET_STRATEGY.md`:
 
 - Stage 1: fractional `toxicity` plus auxiliary `severe_toxicity`;
 - Stage 2: fractional multilabel outputs for `obscene`, `threat`, `insult`, `identity_attack`, and `sexual_explicit`;
@@ -35,11 +35,18 @@ The historical notebook remains preserved and is not rewritten.
 
 ## Current unresolved evaluation concerns
 
-### Toxicity gate coverage
+### Residual toxicity-gate limitation
 
-The initial hierarchical routing definition uses `toxicity >= 0.5` to define the Stage 2 training/oracle subset. This has precedent, but the repository has not yet measured how many fine-grained positives occur with `toxicity < 0.5` in the full Civil Comments training data.
+Full-train gate coverage has now been measured on all `1,804,874` Civil Comments training samples. Based on the measured cost/coverage trade-off, the repaired path uses `toxicity >= 0.4` as the initial Stage 2 routing rule.
 
-`scripts/analyze_gate_coverage.py` provides the required measurement. The threshold must not be described as empirically safe until that analysis is executed and recorded.
+At this threshold:
+
+- 201,476 samples (11.16% of train) are routed to Stage 2;
+- 533 of 126,250 samples with at least one positive Stage 2 label fall below the gate;
+- any-positive coverage is 99.578%;
+- `sexual_explicit` remains the most affected subtype, with 226 of 4,686 positives (4.823%) excluded by the ground-truth gate.
+
+The measurement resolves the previous unknown-coverage issue, but it does **not** prove that `0.4` is globally optimal. Predicted Stage 1 routing and downstream subtype performance still need to be evaluated in the new baseline.
 
 ### Hierarchical propagation error
 
@@ -66,4 +73,6 @@ Until the remaining repair and re-evaluation work is complete, the project shoul
 
 ## Current scope
 
-The historical notebook is preserved as an immutable experimental reference. Leakage-safe evaluation and a hierarchical target strategy now exist as separate, testable code paths. Gate analysis, overfitting repair, full retraining, threshold calibration, and publication of replacement metrics remain follow-up work.
+The historical notebook is preserved as an immutable experimental reference. Leakage-safe evaluation, the hierarchical target strategy, and full-train gate analysis now exist as separate, testable evidence-backed paths.
+
+The main follow-up work is confirmed-overfitting repair, execution of the hierarchical baseline, analysis of predicted routing and train/validation behavior, threshold calibration where justified, and publication of replacement metrics only after those checks are complete.
