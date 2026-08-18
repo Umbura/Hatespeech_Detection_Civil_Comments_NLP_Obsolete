@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    frame = load_dataset("civil_comments", split="train").to_pandas()
+    frame = load_dataset("google/civil_comments", split="train").to_pandas()
     frame = frame.loc[:, ALL_TARGET_COLUMNS].reset_index(drop=True)
 
     report = analyze_gate_coverage(

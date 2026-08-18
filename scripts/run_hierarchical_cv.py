@@ -73,7 +73,7 @@ CONFIG = {
 def load_frame():
     """Load the text plus the seven original fractional Civil Comments targets."""
 
-    dataset = load_dataset("civil_comments", split="train").to_pandas()
+    dataset = load_dataset("google/civil_comments", split="train").to_pandas()
     columns = ["text", *ALL_TARGET_COLUMNS]
     return dataset.loc[:, columns].reset_index(drop=True)
 

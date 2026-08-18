@@ -68,7 +68,7 @@ LABEL_COLUMNS = [
 def load_labeled_data():
     """Load Civil Comments and preserve the historical single-label rule."""
 
-    dataset = load_dataset("civil_comments", split="train").to_pandas()
+    dataset = load_dataset("google/civil_comments", split="train").to_pandas()
     dataset["non_toxic"] = (dataset[LABEL_COLUMNS].sum(axis=1) == 0).astype(int)
 
     def get_label(row):
