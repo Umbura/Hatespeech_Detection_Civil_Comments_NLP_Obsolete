@@ -18,7 +18,10 @@ class RepositoryIntegrityTests(unittest.TestCase):
             ROOT / "requirements.txt",
             ROOT / "docs" / "KNOWN_ISSUES.md",
             ROOT / "docs" / "EXPERIMENT_HISTORY.md",
+            ROOT / "docs" / "REPRODUCIBILITY.md",
             ROOT / "src" / "hate_speech_detection" / "__init__.py",
+            ROOT / "src" / "hate_speech_detection" / "cv_pipeline.py",
+            ROOT / "scripts" / "run_leakage_safe_cv.py",
             NOTEBOOK,
         ]
 
