@@ -48,6 +48,8 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from hate_speech_detection.hierarchical_splits import make_hierarchical_splits
 from hate_speech_detection.target_strategy import (
     ALL_TARGET_COLUMNS,
+    DEFAULT_GATE_THRESHOLD,
+    DEFAULT_LABEL_THRESHOLD,
     STAGE1_TARGET_COLUMNS,
     STAGE2_TARGET_COLUMNS,
     analyze_gate_coverage,
@@ -64,8 +66,8 @@ CONFIG = {
     "N_SPLITS": 5,
     "BATCH_SIZE": 128,
     "EPOCHS": 5,
-    "GATE_THRESHOLD": 0.5,
-    "LABEL_THRESHOLD": 0.5,
+    "GATE_THRESHOLD": DEFAULT_GATE_THRESHOLD,
+    "LABEL_THRESHOLD": DEFAULT_LABEL_THRESHOLD,
     "RANDOM_STATE": 42,
 }
 
