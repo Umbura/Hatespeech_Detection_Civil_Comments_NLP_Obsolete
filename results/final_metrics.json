@@ -37,7 +37,10 @@
       "identity_attack": 0.3761,
       "sexual_explicit": 0.3892
     },
-    "selected_routing_thresholds": [0.27, 0.3]
+    "selected_routing_thresholds": [
+      0.27,
+      0.3
+    ]
   },
   "replication_run": {
     "stage1_nested_f1": 0.6351,
@@ -47,9 +50,59 @@
     "stage2_oracle_nested_macro_f1": 0.5967,
     "end_to_end_nested_macro_f1": 0.4427
   },
+  "publication_reproduction": {
+    "date": "2026-08-19",
+    "git_commit": "cfcebb2410f6c435261c77b1a2bc7500eacec52a",
+    "runtime": "CPU (TensorFlow reported CUDA unavailable)",
+    "stage1_fixed": {
+      "accuracy": 0.9253,
+      "precision": 0.8389,
+      "recall": 0.4092,
+      "f1": 0.5501,
+      "routing_rate": 0.0544,
+      "average_precision": 0.709,
+      "roc_auc": 0.9194,
+      "severe_toxicity_mae": 0.007
+    },
+    "stage1_nested": {
+      "accuracy": 0.9254,
+      "precision": 0.6962,
+      "recall": 0.5879,
+      "f1": 0.6375,
+      "routing_rate": 0.0943,
+      "average_precision": 0.709,
+      "roc_auc": 0.9194,
+      "severe_toxicity_mae": 0.007
+    },
+    "stage2_oracle_fixed_macro_f1": 0.4791,
+    "stage2_oracle_nested_macro_f1": 0.5977,
+    "stage2_oracle_nested_per_label_f1": {
+      "obscene": 0.6169,
+      "threat": 0.5114,
+      "insult": 0.7645,
+      "identity_attack": 0.5628,
+      "sexual_explicit": 0.5328
+    },
+    "end_to_end_fixed_macro_f1": 0.3474,
+    "end_to_end_nested_macro_f1": 0.4423,
+    "end_to_end_nested_per_label_f1": {
+      "obscene": 0.5112,
+      "threat": 0.3002,
+      "insult": 0.6291,
+      "identity_attack": 0.3809,
+      "sexual_explicit": 0.39
+    },
+    "selected_routing_thresholds": [
+      0.28,
+      0.25
+    ],
+    "fixed_to_nested_absolute_gain": 0.0949,
+    "fixed_to_nested_relative_gain_percent": 27.3
+  },
   "interpretation": {
     "official_repository_benchmark_macro_f1": 0.4412,
     "replication_macro_f1": 0.4427,
+    "publication_reproduction_macro_f1": 0.4423,
     "fixed_to_nested_absolute_gain": 0.0916,
     "fixed_to_nested_relative_gain_percent": 26.2,
     "claim": "Research benchmark; not state of the art and not production-ready."
