@@ -6,7 +6,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK = ROOT / "notebooks" / "Hatespeech_Detection_LSTM_CNN.ipynb"
+HISTORICAL_NOTEBOOK = ROOT / "notebooks" / "Hatespeech_Detection_LSTM_CNN.ipynb"
+FINAL_NOTEBOOK = ROOT / "notebooks" / "final" / "HateSpeech_Final_Hierarchical.ipynb"
 
 
 class RepositoryIntegrityTests(unittest.TestCase):
@@ -20,6 +21,9 @@ class RepositoryIntegrityTests(unittest.TestCase):
             ROOT / "docs" / "EXPERIMENT_HISTORY.md",
             ROOT / "docs" / "REPRODUCIBILITY.md",
             ROOT / "docs" / "TARGET_STRATEGY.md",
+            ROOT / "results" / "FINAL_RESULTS.md",
+            ROOT / "results" / "final_metrics.json",
+            ROOT / "notebooks" / "README.md",
             ROOT / "src" / "hate_speech_detection" / "__init__.py",
             ROOT / "src" / "hate_speech_detection" / "cv_pipeline.py",
             ROOT / "src" / "hate_speech_detection" / "target_strategy.py",
@@ -29,14 +33,15 @@ class RepositoryIntegrityTests(unittest.TestCase):
             ROOT / "scripts" / "run_hierarchical_cv.py",
             ROOT / "scripts" / "run_route_head_cv.py",
             ROOT / "scripts" / "analyze_gate_coverage.py",
-            NOTEBOOK,
+            HISTORICAL_NOTEBOOK,
+            FINAL_NOTEBOOK,
         ]
 
         missing = [str(path.relative_to(ROOT)) for path in expected_paths if not path.exists()]
         self.assertEqual(missing, [], f"Missing expected repository paths: {missing}")
 
-    def test_historical_notebook_is_valid_nbformat_4_json(self) -> None:
-        with NOTEBOOK.open("r", encoding="utf-8") as handle:
+    def _assert_valid_notebook(self, path: Path) -> None:
+        with path.open("r", encoding="utf-8") as handle:
             notebook = json.load(handle)
 
         self.assertEqual(notebook.get("nbformat"), 4)
@@ -44,19 +49,33 @@ class RepositoryIntegrityTests(unittest.TestCase):
         self.assertGreater(len(notebook["cells"]), 0)
 
         for index, cell in enumerate(notebook["cells"]):
-            self.assertIn(cell.get("cell_type"), {"code", "markdown", "raw"}, f"Invalid cell {index}")
-            self.assertIn("source", cell, f"Cell {index} has no source")
+            self.assertIn(cell.get("cell_type"), {"code", "markdown", "raw"}, f"Invalid cell {index} in {path.name}")
+            self.assertIn("source", cell, f"Cell {index} has no source in {path.name}")
+
+    def test_research_notebooks_are_valid_nbformat_4_json(self) -> None:
+        for notebook_path in (HISTORICAL_NOTEBOOK, FINAL_NOTEBOOK):
+            self._assert_valid_notebook(notebook_path)
 
     def test_historical_notebook_is_not_duplicated_at_repository_root(self) -> None:
         root_notebook = ROOT / "Hatespeech_Detection_LSTM_CNN.ipynb"
         self.assertFalse(root_notebook.exists())
 
-    def test_readmes_reference_current_notebook_path(self) -> None:
-        expected_path = "notebooks/Hatespeech_Detection_LSTM_CNN.ipynb"
+    def test_readmes_reference_historical_and_final_notebooks(self) -> None:
+        expected_paths = (
+            "notebooks/Hatespeech_Detection_LSTM_CNN.ipynb",
+            "notebooks/final/HateSpeech_Final_Hierarchical.ipynb",
+        )
 
         for readme_name in ("README.md", "README_PT.md"):
             content = (ROOT / readme_name).read_text(encoding="utf-8")
-            self.assertIn(expected_path, content, f"{readme_name} does not reference the current notebook path")
+            for expected_path in expected_paths:
+                self.assertIn(expected_path, content, f"{readme_name} does not reference {expected_path}")
+
+    def test_final_metrics_match_reporting_contract(self) -> None:
+        metrics = json.loads((ROOT / "results" / "final_metrics.json").read_text(encoding="utf-8"))
+        self.assertEqual(metrics["project_status"], "final_research_benchmark")
+        self.assertAlmostEqual(metrics["primary_run"]["end_to_end_nested_macro_f1"], 0.4412, places=4)
+        self.assertAlmostEqual(metrics["replication_run"]["end_to_end_nested_macro_f1"], 0.4427, places=4)
 
     def test_runtime_scripts_use_namespaced_civil_comments_id(self) -> None:
         script_names = (
