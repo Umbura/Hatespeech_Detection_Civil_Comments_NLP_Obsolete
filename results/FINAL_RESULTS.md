@@ -10,13 +10,14 @@ The official value retained for reporting is:
 End-to-end Macro F1 = 0.4412
 ```
 
-A repeated execution of the same protocol produced:
+Two later full-data reproductions support the same performance region:
 
 ```text
-End-to-end Macro F1 = 0.4427
+Previous replication:      0.4427
+Publication reproduction:  0.4423
 ```
 
-The replication is reported as stability evidence. It does not replace the primary benchmark merely because it is slightly higher.
+The primary benchmark remains `0.4412` to avoid retroactively selecting the largest run.
 
 ## Primary full-data run
 
@@ -66,9 +67,9 @@ Nested per-label F1:
 
 The end-to-end gain is `+0.0916` absolute, approximately `+26.2%` relative.
 
-## Replication
+## Previous replication
 
-A second full run of the same hierarchical nested-threshold protocol produced:
+A second full run produced:
 
 | Metric | Result |
 |---|---:|
@@ -79,7 +80,47 @@ A second full run of the same hierarchical nested-threshold protocol produced:
 | Stage 2 oracle Macro F1 | 0.5967 |
 | End-to-end Macro F1 | **0.4427** |
 
-The two end-to-end runs (`0.4412` and `0.4427`) support a stable performance region around `0.44`.
+## Publication reproduction
+
+The final notebook published for the scientific-initiation delivery was executed on **2026-08-19** from commit `cfcebb2` on CPU because TensorFlow reported CUDA unavailable.
+
+### Stage 1
+
+| Metric | Fixed | Nested |
+|---|---:|---:|
+| Accuracy | 0.9253 | 0.9254 |
+| Precision | 0.8389 | 0.6962 |
+| Recall | 0.4092 | 0.5879 |
+| F1 | 0.5501 | **0.6375** |
+| Routing rate | 0.0544 | 0.0943 |
+| PR-AUC / AP | 0.7090 | 0.7090 |
+| ROC-AUC | 0.9194 | 0.9194 |
+
+### Stage 2 oracle
+
+| Metric | Fixed | Nested |
+|---|---:|---:|
+| Macro F1 | 0.4791 | **0.5977** |
+
+### End-to-end
+
+| Metric | Fixed | Nested |
+|---|---:|---:|
+| Macro F1 | 0.3474 | **0.4423** |
+
+Nested per-label F1:
+
+| Label | F1 |
+|---|---:|
+| obscene | 0.5112 |
+| threat | 0.3002 |
+| insult | 0.6291 |
+| identity_attack | 0.3809 |
+| sexual_explicit | 0.3900 |
+
+This run improved end-to-end Macro F1 by `+0.0949` absolute (`+27.3%` relative) compared with its fixed-threshold evaluation.
+
+The three full runs (`0.4412`, `0.4427`, `0.4423`) support a stable performance region around `0.44`.
 
 ## Scientific interpretation
 
@@ -95,7 +136,7 @@ The main finding is not a state-of-the-art claim. The evidence shows that:
 For academic reporting:
 
 - use **0.4412** as the primary end-to-end Macro F1;
-- report **0.4427** as replication evidence;
-- distinguish Stage 2 oracle (`0.5959`) from system end-to-end performance;
+- report **0.4427** and **0.4423** as independent reproduction evidence;
+- distinguish Stage 2 oracle from system end-to-end performance;
 - do not report the historical `~0.90` notebook result as the current benchmark;
 - do not claim production readiness or state of the art.
