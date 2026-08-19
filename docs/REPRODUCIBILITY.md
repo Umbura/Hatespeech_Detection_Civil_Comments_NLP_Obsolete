@@ -1,216 +1,257 @@
 # Reproducibility Baseline
 
-## Current status
+## Final project status
 
-This repository preserves a historical CNN + Bi-LSTM experiment whose exact original runtime package versions were not recorded. The saved notebook remains the source of truth for that historical experiment, and its scientific limitations are documented in `KNOWN_ISSUES.md` and `EXPERIMENT_HISTORY.md`.
-
-The repaired code path now has a separate reproducibility baseline:
-
-- Python `3.12` is declared in `.python-version`;
-- `requirements.txt` pins the dependency versions used by the repaired local pipeline;
-- TensorFlow `2.20.0` was validated with GPU detection under WSL2 after TensorFlow `2.21.0` failed to register the same NVIDIA GPU in that environment;
-- the pinned local environment passed dependency compatibility checks;
-- `scripts/analyze_gate_coverage.py` executed against the full Civil Comments training split using the current `google/civil_comments` dataset source;
-- a full two-fold hierarchical fixed-threshold baseline was executed on Google Colab on 2026-08-18;
-- the nested threshold-selection experiment was also executed successfully on the full training split on 2026-08-18 without changing the architecture or BCE training loss.
-
-Two repaired code paths exist outside the historical notebook:
-
-- `scripts/run_leakage_safe_cv.py` preserves the historical multiclass target rule while correcting cross-validation leakage; it remains an intermediate comparison baseline;
-- `scripts/run_hierarchical_cv.py` implements the hierarchical target strategy documented in `TARGET_STRATEGY.md` and is the canonical current experimental runner.
-
-## Validated local runtime
-
-The repaired local runtime currently pins:
+The canonical research pipeline is implemented by:
 
 ```text
-Python                  3.12
-TensorFlow              2.20.0
-NumPy                   2.5.2
-pandas                  3.0.5
-matplotlib              3.11.1
-scikit-learn            1.9.0
-imbalanced-learn        0.14.2
-datasets                5.0.0
+scripts/run_hierarchical_cv.py
+```
+
+The canonical final notebook is:
+
+```text
+notebooks/final/HateSpeech_Final_Hierarchical.ipynb
+```
+
+The official repository benchmark is:
+
+```text
+End-to-end Macro F1 = 0.4412
+```
+
+A repeated full run produced `0.4427`, which is reported as replication evidence.
+
+The historical notebook remains preserved separately and is not the source of the final benchmark.
+
+## Runtime definitions
+
+### Pinned local runtime
+
+`requirements.txt` currently defines the repaired local environment:
+
+```text
+Python                   3.12
+TensorFlow               2.20.0
+NumPy                    2.5.2
+pandas                   3.0.5
+matplotlib               3.11.1
+scikit-learn             1.9.0
+imbalanced-learn         0.14.2
+datasets                 5.0.0
 iterative-stratification 0.1.9
 ```
 
-Create the local environment from the repository root with `uv`:
+Create it with:
 
 ```bash
 uv venv --python 3.12
-uv pip install --python .venv/Scripts/python.exe -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
-On POSIX/Linux shells, use `.venv/bin/python` instead of `.venv/Scripts/python.exe`.
+### Recorded Colab full-run runtime
 
-The historical notebook predates these pins. They describe the repaired runtime, not the unrecorded original notebook environment.
-
-## Recorded Colab runtime
-
-The completed two-fold hierarchical experiments were executed in a Google Colab Tesla T4 session. The notebook reported:
+The completed full-data hierarchical experiments were executed in a Google Colab Tesla T4 session with:
 
 ```text
-TensorFlow              2.20.0
-NumPy                   2.0.2
-pandas                  2.2.3
-scikit-learn            1.6.1
-GPU                     Tesla T4
+TensorFlow       2.20.0
+NumPy            2.0.2
+pandas           2.2.3
+scikit-learn     1.6.1
+GPU              Tesla T4
 ```
 
-This Colab runtime is recorded because it produced the full-data evidence in `EXPERIMENT_HISTORY.md`. It is not claimed to be byte-for-byte identical to the pinned local environment. Any final reported result should record the exact runtime that generated it.
+The local pinned environment and the recorded Colab environment are not claimed to be byte-for-byte identical. Runtime differences must be recorded when reproducing results.
 
-## Repository-level validation
+## Dataset
 
-Run the structural and regression checks from the repository root:
+The experiment uses:
+
+```text
+google/civil_comments
+```
+
+The training split used for the hierarchical cross-validation contains:
+
+```text
+1,804,874 rows
+```
+
+The repository does not currently pin an immutable dataset revision, which remains a reproducibility limitation.
+
+## Ground-truth hierarchy
+
+Stage 2 membership is defined by:
+
+```text
+toxicity >= 0.4
+```
+
+Binary evaluation of subtype targets uses:
+
+```text
+score >= 0.5
+```
+
+Full-train gate analysis at the selected definition produced:
+
+```text
+Routed rows                         201,476
+Any-positive Stage 2 rows          126,250
+Any-positive rows missed               533
+Any-positive Stage 2 coverage       99.578%
+```
+
+Reproduce the analysis with:
+
+```bash
+python scripts/analyze_gate_coverage.py
+```
+
+## Hierarchical validation protocol
+
+The final runner uses two outer folds.
+
+Within each outer-training partition, one common inner validation partition is created for both stages.
+
+The inner partition is used for:
+
+1. Stage 1 EarlyStopping;
+2. Stage 2 EarlyStopping;
+3. Stage 2 per-label threshold selection by F1;
+4. Stage 1 routing-threshold selection by end-to-end Macro F1.
+
+Routed inner rows use iterative multilabel stratification. Non-routed rows are split separately and recombined into the common Stage 1 inner partition.
+
+The outer fold is evaluation-only and is not used for model fitting, EarlyStopping, or threshold selection.
+
+## Threshold selection
+
+The candidate grid is:
+
+```text
+0.01 ... 0.99
+```
+
+in steps of `0.01`.
+
+Stage 2 ties prefer the threshold closest to `0.5`.
+
+Stage 1 ties prefer:
+
+1. higher gate recall;
+2. then the threshold closest to the `0.4` ground-truth routing reference.
+
+Selected Stage 1 routing thresholds in the primary full run were:
+
+```text
+Fold 1: 0.27
+Fold 2: 0.30
+```
+
+## Primary full-data evidence
+
+### Stage 1
+
+```text
+Fixed F1                 0.5567
+Nested F1                0.6319
+Nested recall            0.5653
+PR-AUC / AP              0.7095
+ROC-AUC                  0.9195
+```
+
+### Stage 2 oracle
+
+```text
+Fixed Macro F1           0.4766
+Nested Macro F1          0.5959
+```
+
+### End-to-end
+
+```text
+Fixed Macro F1           0.3496
+Nested Macro F1          0.4412
+```
+
+The fixed-to-nested improvement is `+0.0916` absolute, approximately `+26.2%` relative.
+
+## Replication evidence
+
+A second full execution of the same protocol produced:
+
+```text
+Stage 1 nested F1        0.6351
+Stage 1 nested recall    0.5780
+Stage 1 PR-AUC / AP      0.7086
+Stage 1 ROC-AUC          0.9195
+Stage 2 oracle Macro F1  0.5967
+End-to-end Macro F1      0.4427
+```
+
+The close end-to-end values (`0.4412` and `0.4427`) are reported as evidence that the observed performance region is stable across the two recorded full runs.
+
+The primary benchmark remains `0.4412` to avoid choosing the larger result after observing both runs.
+
+## Repository validation
+
+From the repository root:
 
 ```bash
 python -m compileall -q src scripts
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-These checks verify repository layout, source syntax, notebook JSON/nbformat integrity, historical leakage protections, hierarchical target extraction, preservation of overlapping labels, gate behavior, outer-fold disjointness, common inner-validation isolation, multilabel-aware routed-sample stratification, threshold-selection behavior, the namespaced Civil Comments dataset identifier, and absence of Stage 2 oversampling in the hierarchical strategy.
+GitHub Actions executes the repository's lightweight structural/regression validation. CI does not perform full TensorFlow model training.
 
-GitHub Actions runs the same validation on pull requests and pushes to `main`. The CI job uses Python 3.12 with the lightweight data/validation dependencies required by regression tests; it intentionally does not install TensorFlow or execute model training.
+## Smoke run
 
-## Gate-coverage evidence
-
-The gate-coverage analysis was executed on the full Civil Comments training split (`1,804,874` samples), with Stage 2 positives counted at `score >= 0.5`.
-
-The selected ground-truth routing definition is:
-
-```text
-toxicity >= 0.4
-```
-
-At this gate, `201,476` samples are routed to Stage 2 (11.16% of train), and `533` of `126,250` samples with at least one positive Stage 2 label are missed, corresponding to 99.578% any-positive coverage.
-
-The measured comparison across `0.50`, `0.40`, `0.35`, and `0.30`, including the `sexual_explicit` limitation, is recorded in `TARGET_STRATEGY.md`.
-
-The analysis can be reproduced with:
+Use only for execution-path diagnostics:
 
 ```bash
-python scripts/analyze_gate_coverage.py
+python scripts/run_hierarchical_cv.py \
+  --max-samples 50000 \
+  --n-splits 2 \
+  --epochs 1
 ```
 
-The ground-truth gate is a target/data definition. The predicted Stage 1 routing threshold is treated separately and selected from model outputs inside nested validation.
+Metrics from sampled smoke runs must not be reported as full-data scientific results.
 
-## Hierarchical experiment protocol
-
-The hierarchical runner uses two outer folds by default for the current experimental cycle. Within each outer training fold, 10% of the rows are reserved as one common inner validation partition shared by both stages.
-
-The common inner split is built hierarchically:
-
-- routed rows use iterative multilabel stratification;
-- non-routed rows are split separately;
-- Stage 2 fit/validation rows are exactly the routed subsets of the same common Stage 1 inner partitions.
-
-The inner validation partition is used for:
-
-1. EarlyStopping for Stage 1;
-2. EarlyStopping for Stage 2;
-3. per-label Stage 2 prediction-threshold selection by F1;
-4. Stage 1 predicted-routing-threshold selection by **end-to-end Macro F1**.
-
-The threshold grid is `0.01` through `0.99` in steps of `0.01`. Stage 2 ties prefer the threshold closest to the fixed `0.5` reference. Stage 1 ties in end-to-end Macro F1 prefer higher gate recall, then the threshold closest to the ground-truth `0.4` reference.
-
-The outer validation fold is not used for fitting, EarlyStopping, or threshold selection.
-
-## Fixed versus nested-tuned evaluation
-
-The same trained models produce both references in one run:
-
-### Fixed reference
-
-```text
-Stage 1 predicted routing threshold = 0.4
-Stage 2 predicted label thresholds  = 0.5 for all five labels
-```
-
-### Nested tuned reference
-
-```text
-Stage 2 thresholds = selected per label on routed inner validation
-Stage 1 threshold  = selected on full inner validation by end-to-end Macro F1
-```
-
-This lets threshold effects be measured without training a second architecture or changing the loss.
-
-The runner additionally reports:
-
-- Stage 1 precision, recall, F1, routing rate, PR-AUC/average precision, ROC-AUC, and auxiliary `severe_toxicity` MAE;
-- Stage 2 oracle Macro F1, per-label F1, and per-label PR-AUC/average precision;
-- end-to-end Macro F1 and per-label F1;
-- the threshold selected in each outer fold and its inner-validation score.
-
-## Commands
-
-Full current two-fold experiment:
+## Full reproduction command
 
 ```bash
-python scripts/run_hierarchical_cv.py --n-splits 2 --epochs 5
+python scripts/run_hierarchical_cv.py \
+  --n-splits 2 \
+  --epochs 5
 ```
 
-Smoke/debug run:
+GPU execution is recommended because CPU training is substantially slower.
 
-```bash
-python scripts/run_hierarchical_cv.py --max-samples 50000 --n-splits 2 --epochs 1
-```
+## Final notebook workflow
 
-Metrics produced with `--max-samples` are diagnostic only and must not be reported as the full-dataset benchmark.
+`notebooks/final/HateSpeech_Final_Hierarchical.ipynb` provides:
 
-## Completed full-data evidence
+- the research question;
+- target strategy;
+- architecture summary;
+- validated result tables;
+- primary vs replication distinction;
+- interpretation and limitations;
+- gate-analysis command;
+- smoke command;
+- full reproduction command.
 
-### Earlier repaired fixed-threshold baseline
+## What is not claimed
 
-```text
-Stage 1 recall                  0.4614
-Stage 1 F1                      0.5840
-Stage 2 oracle Macro F1         0.4674
-End-to-end Macro F1             0.3484
-```
+The final project evidence does not establish:
 
-### PR #10 nested-threshold run — same model fits for fixed/tuned comparison
+- an official frozen test-set benchmark;
+- state-of-the-art performance;
+- fairness across identity subgroups;
+- adversarial or cross-domain robustness;
+- production latency, scalability, or reliability;
+- resolved overfitting;
+- byte-identical determinism across CPU/GPU and dependency environments.
 
-```text
-Stage 1 fixed F1                0.5567
-Stage 1 tuned F1                0.6319
-Stage 1 tuned recall            0.5653
-Stage 1 PR-AUC / AP             0.7095
-Stage 1 ROC-AUC                 0.9195
-Stage 2 oracle fixed Macro F1   0.4766
-Stage 2 oracle tuned Macro F1   0.5959
-End-to-end fixed Macro F1       0.3496
-End-to-end tuned Macro F1       0.4412
-```
-
-The selected Stage 1 routing thresholds were `0.27` and `0.30` across the two folds. Per-label Stage 2 thresholds were also in similar operating regions across folds (`0.33` to `0.46`). Full per-label results are recorded in `EXPERIMENT_HISTORY.md`.
-
-This outer-fold evidence confirms that threshold mismatch explained a meaningful fraction of the earlier error. It does not eliminate the remaining hierarchical propagation gap.
-
-## What remains unvalidated
-
-The current evidence does not yet:
-
-- resolve the remaining Stage 2 oracle/end-to-end propagation gap;
-- test whether direct binary routing supervision improves Stage 1 beyond the nested threshold baseline;
-- resolve the confirmed early overfitting behavior;
-- pin a specific immutable Civil Comments dataset revision;
-- validate fairness, robustness, or production suitability;
-- provide a final evaluation on the untouched official Civil Comments test split.
-
-## Requirements for final replacement metrics
-
-Before new metrics are promoted as the final project benchmark, reproducibility evidence should include at least:
-
-1. the exact Python and dependency versions of the execution environment;
-2. deterministic seeds where supported;
-3. the dataset source and immutable revision/configuration used for the metric run;
-4. preprocessing, outer split, common inner split, routing, target, and threshold-selection configuration;
-5. the measured gate-coverage report;
-6. hardware/runtime notes;
-7. commands required to train and evaluate;
-8. Stage 1, Stage 2 oracle, and end-to-end metrics tied to the corresponding code revision;
-9. selected thresholds and diagnostic PR-AUC/average-precision values;
-10. train/inner-validation behavior sufficient to assess overfitting;
-11. a final official-test evaluation performed only after the development configuration is frozen.
+Those items are explicitly outside the completed academic scope and may be addressed only in future work.
