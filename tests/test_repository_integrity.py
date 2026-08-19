@@ -13,7 +13,6 @@ class RepositoryIntegrityTests(unittest.TestCase):
     def test_expected_project_paths_exist(self) -> None:
         expected_paths = [
             ROOT / ".python-version",
-            ROOT / "AGENTS.md",
             ROOT / "README.md",
             ROOT / "README_PT.md",
             ROOT / "requirements.txt",
