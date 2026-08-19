@@ -1,0 +1,57 @@
+{
+  "project_status": "final_research_benchmark",
+  "dataset": "google/civil_comments",
+  "train_rows": 1804874,
+  "architecture": "parallel CNN + Bi-LSTM, hierarchical two-stage",
+  "outer_folds": 2,
+  "epochs_max": 5,
+  "ground_truth_routing_threshold": 0.4,
+  "label_threshold_for_binary_ground_truth": 0.5,
+  "primary_run": {
+    "stage1_fixed": {
+      "accuracy": 0.9257,
+      "precision": 0.834,
+      "recall": 0.4178,
+      "f1": 0.5567,
+      "routing_rate": 0.0559,
+      "average_precision": 0.7095,
+      "roc_auc": 0.9195
+    },
+    "stage1_nested": {
+      "accuracy": 0.9265,
+      "precision": 0.7163,
+      "recall": 0.5653,
+      "f1": 0.6319,
+      "routing_rate": 0.0881,
+      "average_precision": 0.7095,
+      "roc_auc": 0.9195
+    },
+    "stage2_oracle_fixed_macro_f1": 0.4766,
+    "stage2_oracle_nested_macro_f1": 0.5959,
+    "end_to_end_fixed_macro_f1": 0.3496,
+    "end_to_end_nested_macro_f1": 0.4412,
+    "end_to_end_nested_per_label_f1": {
+      "obscene": 0.5115,
+      "threat": 0.2951,
+      "insult": 0.6343,
+      "identity_attack": 0.3761,
+      "sexual_explicit": 0.3892
+    },
+    "selected_routing_thresholds": [0.27, 0.3]
+  },
+  "replication_run": {
+    "stage1_nested_f1": 0.6351,
+    "stage1_nested_recall": 0.578,
+    "stage1_average_precision": 0.7086,
+    "stage1_roc_auc": 0.9195,
+    "stage2_oracle_nested_macro_f1": 0.5967,
+    "end_to_end_nested_macro_f1": 0.4427
+  },
+  "interpretation": {
+    "official_repository_benchmark_macro_f1": 0.4412,
+    "replication_macro_f1": 0.4427,
+    "fixed_to_nested_absolute_gain": 0.0916,
+    "fixed_to_nested_relative_gain_percent": 26.2,
+    "claim": "Research benchmark; not state of the art and not production-ready."
+  }
+}

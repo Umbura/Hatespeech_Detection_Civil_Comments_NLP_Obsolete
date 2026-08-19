@@ -2,22 +2,18 @@
 
 # Detecção Híbrida de Discurso de Ódio
 
-### Baseline Histórico CNN + Bi-LSTM no Civil Comments
+### Benchmark acadêmico final CNN + Bi-LSTM hierárquico no Civil Comments
 
 [![Read in English](https://img.shields.io/badge/Read%20in-English-0077B5?style=for-the-badge&logo=google-translate&logoColor=white)](README.md)
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.12-blue" alt="Python 3.12">
-  <img src="https://img.shields.io/badge/TensorFlow-2.21-orange" alt="TensorFlow 2.21">
-  <img src="https://img.shields.io/badge/Status-Baseline_Histórico-yellow" alt="Status: Baseline Histórico">
-  <a href="https://colab.research.google.com/github/Umbura/Hatespeech_Detection_Civil_Comments_NLP_Obsolete/blob/main/notebooks/Hatespeech_Detection_LSTM_CNN.ipynb">
-    <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Abrir no Colab">
+  <img src="https://img.shields.io/badge/TensorFlow-2.20-orange" alt="TensorFlow 2.20">
+  <img src="https://img.shields.io/badge/Status-Pesquisa_Concluída-brightgreen" alt="Status: Pesquisa Concluída">
+  <a href="https://colab.research.google.com/github/Umbura/Hatespeech_Detection_Civil_Comments_NLP_Obsolete/blob/main/notebooks/final/HateSpeech_Final_Hierarchical.ipynb">
+    <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Abrir Notebook Final no Colab">
   </a>
 </p>
-
-<img src="assets/resultado_neos_v4.png" alt="Resultados históricos do experimento Civil Comments" width="100%">
-
-*Saída histórica preservada para rastreabilidade. Ela não representa o benchmark validado de um modelo corrigido.*
 
 </div>
 
@@ -25,114 +21,119 @@
 
 ## Sobre o Projeto
 
-Este repositório preserva um experimento de pesquisa para classificação multiclasse de toxicidade / categorias relacionadas a discurso de ódio utilizando o dataset **Civil Comments** e uma arquitetura neural paralela **CNN + Bi-LSTM**.
+Este repositório contém um experimento acadêmico de NLP para classificação de toxicidade e categorias relacionadas a discurso de ódio utilizando o dataset **Civil Comments** e um encoder paralelo **CNN + Bi-LSTM**.
 
-O experimento passou por diferentes abordagens até chegar à arquitetura híbrida paralela atualmente preservada no notebook histórico. Os embeddings são treinados do zero, em vez de inicializados com vetores pré-treinados como GloVe ou Word2Vec.
+O notebook original é preservado como evidência histórica, mas o resultado científico final vem de um pipeline **hierárquico em dois estágios**, corrigido metodologicamente, com pré-processamento isolado por fold, EarlyStopping na validação interna e seleção nested dos thresholds de decisão.
 
-O repositório está agora em um ciclo controlado de correção e reavaliação. O notebook histórico é mantido intencionalmente para que o novo caminho experimental possa ser comparado com ele sem reescrever as evidências anteriores.
-
----
-
-## Estado Atual do Projeto
-
-O experimento salvo **não é considerado um modelo final nem pronto para produção**.
-
-| Item | Estado atual |
-| :--- | :--- |
-| Arquitetura | Baseline histórico CNN + Bi-LSTM paralelo |
-| Dataset | Civil Comments |
-| Macro F1 salvo | ~0,90 (execução histórica) |
-| Overfitting | **Confirmado** |
-| Pipeline de avaliação | Runners leakage-safe e hierárquico implementados; novo benchmark pendente |
-| Estratégia de labels | Estratégia hierárquica em dois estágios definida; gate inicial selecionado em `0.4` |
-| Correção do modelo | Em andamento |
-| Benchmark final validado | **Ainda não disponível** |
-
-O notebook salvo reporta macro F1 geral em torno de **0,90**, mas esse valor deve ser interpretado somente como um **resultado experimental histórico**. O overfitting confirmado e as questões ainda não resolvidas sobre a qualidade do modelo impedem que essa métrica seja usada como evidência da qualidade final.
-
-Veja [Problemas Conhecidos](docs/KNOWN_ISSUES.md), [Histórico do Experimento](docs/EXPERIMENT_HISTORY.md), [Estratégia de Targets](docs/TARGET_STRATEGY.md) e [Reprodutibilidade](docs/REPRODUCIBILITY.md) para a interpretação técnica atual.
+O projeto é considerado concluído dentro do escopo acadêmico atual. Ele **não** reivindica estado da arte nem prontidão para produção.
 
 ---
 
-## Evolução do Projeto
+## Benchmark Final da Pesquisa
 
-### 1. Fase Inicial — Protótipo One-vs-Rest
+O benchmark oficial do repositório é o experimento completo da PR #10 com seleção nested de thresholds:
 
-- **Abordagem:** classificação em dois estágios One-vs-Rest inspirada em Pitsilis et al. (2022).
-- **Arquitetura:** múltiplos classificadores Bi-LSTM independentes.
-- **Resultado histórico:** aproximadamente 71% de acurácia.
-- **Limitação observada:** complexidade no gerenciamento dos modelos e baixa qualidade na integração das probabilidades.
+| Avaliação | Resultado |
+|---|---:|
+| Stage 1 F1 tunado | 0.6319 |
+| Stage 1 recall tunado | 0.5653 |
+| Stage 1 PR-AUC / AP | 0.7095 |
+| Stage 1 ROC-AUC | 0.9195 |
+| Stage 2 oracle Macro F1 tunado | 0.5959 |
+| **Macro F1 end-to-end tunado** | **0.4412** |
 
-### 2. Fase Intermediária — Híbrido Sequencial
+Uma segunda execução completa do mesmo protocolo produziu **0.4427 de Macro F1 end-to-end**. Essa repetição é mantida como evidência de estabilidade; `0.4412` continua sendo o benchmark principal para evitar selecionar retroativamente apenas a execução ligeiramente maior.
 
-- **Abordagem:** extração de características com CNN seguida de processamento recorrente (CNN → RNN).
-- **Resultado histórico:** aproximadamente 86% de acurácia.
-- **Limitação observada:** o desenho sequencial aparentava descartar informações contextuais necessárias à etapa recorrente.
-
-### 3. Baseline Histórico — Híbrido Paralelo
-
-- **Abordagem:** a mesma entrada de embedding é processada por ramos independentes de contexto e padrões locais, sendo fundida antes da classificação.
-- **Arquitetura:** ramo Bi-LSTM + ramo CNN multi-kernel.
-- **Experimento salvo:** macro F1 em torno de 0,90.
-- **Interpretação atual:** útil como baseline experimental, mas ainda não é um benchmark validado porque o overfitting foi confirmado e o pipeline corrigido ainda não produziu métricas substitutas.
-
-<div align="center">
-  <img src="assets/resultado_neos_v3.png" alt="Resultado histórico da evolução da arquitetura" width="80%">
-</div>
+Métricas completas: [results/FINAL_RESULTS.md](results/FINAL_RESULTS.md) e [results/final_metrics.json](results/final_metrics.json).
 
 ---
 
-## Arquitetura
+## Principal Resultado Científico
 
-O modelo histórico processa a entrada tokenizada em dois ramos paralelos:
+Os mesmos modelos treinados foram avaliados com thresholds fixos e thresholds selecionados na validação interna:
 
-1. **Embedding** — embedding treinável inicializado do zero.
-2. **Ramo contextual (Bi-LSTM)** — modela contexto sequencial e ordem dos tokens.
-3. **Ramo de padrões (CNN Multi-Kernel)** — kernels Conv1D de diferentes tamanhos capturam padrões locais.
-4. **Fusão e classificação** — as saídas dos ramos são concatenadas, seguidas por camadas densas e um classificador softmax.
+| Avaliação end-to-end | Macro F1 |
+|---|---:|
+| Roteamento fixo `0.40` / labels `0.50` | 0.3496 |
+| **Thresholds selecionados de forma nested** | **0.4412** |
 
-Uma variante com GRU também foi explorada historicamente, mas o experimento preservado utiliza Bi-LSTM.
+O ganho foi de `+0.0916` absoluto, aproximadamente **+26,2% relativo**.
 
----
-
-## Dados e Procedimento Histórico de Treinamento
-
-- **Dataset:** [Google / Civil Comments](https://huggingface.co/datasets/google/civil_comments)
-- **Balanceamento histórico:** undersampling das classes maiores e oversampling das menores.
-- **Validação histórica:** validação cruzada estratificada com 5 folds.
-- **Controle de treinamento:** Early Stopping.
-- **Embedding:** treinado do zero.
-
-Esses itens descrevem o que o notebook preservado executa; eles **não** significam que o protocolo histórico seja a metodologia final. O caminho corrigido agora isola o pré-processamento por fold e usa a estratégia hierárquica documentada em `docs/TARGET_STRATEGY.md`.
+A principal conclusão científica não é apenas o valor final de F1. O experimento mostra que thresholds fixos estavam desalinhados com o problema hierárquico e desbalanceado. A seleção dos thresholds apenas na validação interna recuperou uma parcela importante do desempenho sem substituir a arquitetura CNN + Bi-LSTM.
 
 ---
 
-## Resultados Históricos
+## Formulação Hierárquica
 
-O notebook preservado contém as saídas da execução anterior e reporta aproximadamente:
+### Stage 1 — roteamento
 
-| Métrica | Resultado histórico salvo |
-| :--- | :--- |
-| Acurácia | ~0,90 |
-| Macro F1 | ~0,90 |
-| Macro Recall | ~0,90 |
+O Stage 1 aprende as saídas fracionárias do Civil Comments:
 
-Essas métricas são mantidas para rastreabilidade. Elas só serão substituídas como benchmark do projeto após o novo treinamento e uma nova avaliação independente do pipeline corrigido.
+- `toxicity`;
+- `severe_toxicity` como saída auxiliar.
+
+A definição de verdade de referência para roteamento é:
+
+```text
+toxicity >= 0.4
+```
+
+No split de treino completo com `1.804.874` comentários, esse gate encaminha 201.476 exemplos e cobre **99,578%** das amostras que possuem ao menos um subtipo positivo do Stage 2.
+
+### Stage 2 — classificação multilabel
+
+Os comentários roteados são classificados independentemente para:
+
+- `obscene`;
+- `threat`;
+- `insult`;
+- `identity_attack`;
+- `sexual_explicit`.
+
+Os labels sobrepostos são preservados, em vez de reduzidos a uma única classe dependente da ordem.
 
 ---
 
-## Limitações Conhecidas
+## Protocolo de Validação
 
-O projeto ainda possui as seguintes limitações documentadas:
+O experimento final utiliza dois folds externos. Em cada fold:
 
-- overfitting do modelo confirmado;
-- o runner hierárquico ainda não produziu métricas substitutas de benchmark;
-- erros de roteamento no Stage 1 podem se propagar para o Stage 2 e precisam ser medidos end-to-end;
-- o gate `0.4` ainda perde uma pequena parcela dos exemplos positivos de subtipo, principalmente `sexual_explicit`;
-- calibração de threshold por label, fairness, robustez e prontidão para produção ainda não foram validadas;
-- as métricas históricas não são consideradas o benchmark final.
+1. o fold externo é reservado somente para avaliação;
+2. o restante dos dados é dividido em treino e validação interna comum;
+3. pré-processamento aprendido é ajustado somente no treino;
+4. EarlyStopping do Stage 1 e Stage 2 utiliza somente validação interna;
+5. thresholds dos labels do Stage 2 são escolhidos somente na validação interna;
+6. o threshold de roteamento do Stage 1 é escolhido pela Macro F1 end-to-end da validação interna;
+7. os thresholds são congelados antes da avaliação externa.
 
-Detalhes: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) e [docs/TARGET_STRATEGY.md](docs/TARGET_STRATEGY.md).
+O fold externo não influencia treinamento, EarlyStopping ou escolha dos thresholds.
+
+---
+
+## Resultados End-to-End por Label
+
+| Label | F1 |
+|---|---:|
+| obscene | 0.5115 |
+| threat | 0.2951 |
+| insult | 0.6343 |
+| identity_attack | 0.3761 |
+| sexual_explicit | 0.3892 |
+| **Macro F1** | **0.4412** |
+
+O Stage 2 oracle alcança `0.5959` de Macro F1, mas esse valor não representa o sistema completo porque pressupõe roteamento perfeito.
+
+---
+
+## Experimento Histórico
+
+`notebooks/Hatespeech_Detection_LSTM_CNN.ipynb` preserva o experimento original e as métricas salvas em torno de Macro F1 `~0.90`.
+
+Essas métricas históricas **não** são o benchmark atual porque a construção dos targets e o protocolo de validação original possuem limitações metodológicas documentadas. O notebook permanece inalterado para rastreabilidade.
+
+O notebook acadêmico canônico agora é:
+
+`notebooks/final/HateSpeech_Final_Hierarchical.ipynb`
 
 ---
 
@@ -140,73 +141,86 @@ Detalhes: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) e [docs/TARGET_STRATEGY.m
 
 ```text
 .
-├── .python-version
-├── AGENTS.md
 ├── README.md
 ├── README_PT.md
 ├── requirements.txt
 ├── notebooks/
-│   └── Hatespeech_Detection_LSTM_CNN.ipynb
+│   ├── README.md
+│   ├── Hatespeech_Detection_LSTM_CNN.ipynb     # histórico
+│   └── final/
+│       └── HateSpeech_Final_Hierarchical.ipynb # notebook canônico
+├── results/
+│   ├── FINAL_RESULTS.md
+│   └── final_metrics.json
 ├── scripts/
 │   ├── analyze_gate_coverage.py
 │   ├── run_hierarchical_cv.py
-│   └── run_leakage_safe_cv.py
+│   ├── run_leakage_safe_cv.py
+│   └── run_route_head_cv.py
 ├── src/
 │   └── hate_speech_detection/
 ├── tests/
 ├── docs/
-│   ├── KNOWN_ISSUES.md
 │   ├── EXPERIMENT_HISTORY.md
+│   ├── KNOWN_ISSUES.md
 │   ├── REPRODUCIBILITY.md
 │   └── TARGET_STRATEGY.md
 └── assets/
 ```
 
-O notebook permanece como o experimento histórico. As áreas `src/`, `scripts/` e `tests/` contêm o caminho de implementação e validação corrigido.
+`run_hierarchical_cv.py` é o runner canônico do experimento final. `run_route_head_cv.py` permanece como experimento exploratório posterior e não é a fonte do benchmark final.
 
 ---
 
-## Configuração do Runtime Corrigido
+## Reproduzir o Experimento Final
 
-O runtime corrigido está fixado em **Python 3.12** e nas versões exatas registradas em `requirements.txt`.
-
-Usando `uv`:
+Crie o ambiente local a partir da raiz do repositório:
 
 ```bash
-git clone https://github.com/Umbura/Hatespeech_Detection_Civil_Comments_NLP_Obsolete.git
-cd Hatespeech_Detection_Civil_Comments_NLP_Obsolete
 uv venv --python 3.12
 uv pip install -r requirements.txt
 ```
 
-Execute a validação do repositório:
+Execute a validação estrutural:
 
 ```bash
 python -m compileall -q src scripts
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Reproduza a análise de gate já medida:
+Verifique a cobertura do gate no dataset completo:
 
 ```bash
 python scripts/analyze_gate_coverage.py
 ```
 
-Inicie o experimento hierárquico apenas quando uma execução completa de treinamento for desejada:
+Smoke diagnóstico:
 
 ```bash
-python scripts/run_hierarchical_cv.py
+python scripts/run_hierarchical_cv.py --max-samples 50000 --n-splits 2 --epochs 1
 ```
 
-O notebook histórico é anterior ao runtime atualmente fixado. As versões exatas do ambiente original não foram registradas, portanto as dependências atuais não devem ser descritas como o ambiente histórico original.
+Experimento completo:
+
+```bash
+python scripts/run_hierarchical_cv.py --n-splits 2 --epochs 5
+```
+
+Métricas de execuções com `--max-samples` são apenas diagnósticas e não devem ser apresentadas como benchmark do dataset completo.
 
 ---
 
-## Notebook Histórico
+## Limitações
 
-Abra `notebooks/Hatespeech_Detection_LSTM_CNN.ipynb` em um ambiente compatível com Jupyter ou utilize o botão do Colab no topo deste README.
+- foram utilizados dois folds externos devido ao custo computacional do treinamento completo;
+- ainda existe pressão de overfitting em épocas iniciais;
+- erros de roteamento se propagam permanentemente para o Stage 2;
+- `sexual_explicit` é a categoria mais afetada pelo gate de verdade `toxicity >= 0.4`;
+- fairness e robustez por subgrupos não foram validadas;
+- o benchmark final do repositório é uma estimativa por validação cruzada, não uma avaliação congelada no split oficial de teste;
+- o projeto não reivindica estado da arte nem prontidão para produção.
 
-> O notebook é preservado como evidência histórica e contém limitações metodológicas conhecidas. Ele não é alterado para representar o pipeline corrigido.
+Veja [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) para a interpretação completa.
 
 ---
 
@@ -215,10 +229,10 @@ Abra `notebooks/Hatespeech_Detection_LSTM_CNN.ipynb` em um ambiente compatível 
 1. **PITSILIS, G. K.** *Improved two-stage hate speech classification for twitter based on Deep Neural Networks*. arXiv:2206.04162, 2022.
 2. **ZHOU, C. et al.** *A C-LSTM Neural Network for Text Classification*. COLING 2016.
 3. **SCHUSTER, M.; PALIWAL, K. K.** *Bidirectional recurrent neural networks*. IEEE Transactions on Signal Processing, 1997.
-4. **JIGSAW / GOOGLE.** *Jigsaw Unintended Bias in Toxicity Classification*. Kaggle, 2019.
+4. **JIGSAW / GOOGLE.** *Civil Comments / Jigsaw Unintended Bias in Toxicity Classification*.
 
 ---
 
 ## Licença
 
-Distribuído sob a licença Apache 2.0. Veja [LICENSE](LICENSE) para mais detalhes.
+Distribuído sob a licença Apache 2.0. Veja [LICENSE](LICENSE).
